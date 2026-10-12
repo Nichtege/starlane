@@ -277,6 +277,17 @@ class GermanEndToEndTests(TempVaultCase):
         _, out = self.run_cli("doctor")
         self.assertIn(self.de["Vault exists"], out)
 
+    def test_skill_list_is_german(self):
+        folder = self.root / "skills" / "plan"
+        folder.mkdir(parents=True)
+        (folder / "SKILL.md").write_text("---\nname: Plan\ndescription: Plant die Woche\n---\n# Plan\n", encoding="utf-8")
+        code, out = self.run_cli("skills")
+        self.assertEqual(code, 0, out)
+        line = next(ln for ln in out.splitlines() if ln.lstrip().startswith("plan "))
+        self.assertIn("sonnet/Standard", line)  # no effort set: the default, in German
+        self.assertIn("Projekt", line)
+        self.assertNotIn("project", line)
+
     def test_digest_and_vault_check_are_german(self):
         code, out = self.run_cli("digest")
         self.assertEqual(code, 0, out)

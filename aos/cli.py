@@ -458,10 +458,11 @@ def cmd_skills(cfg: Config, args) -> int:
     if not rows:
         _out(tr("No skills found. Create a folder with a SKILL.md in: {dirs}", dirs=", ".join(str(d) for d in cfg.skills_dirs)))
         return 0
+    source = {"project": tr("Project"), "user": tr("User")}  # the same labels as the skill cards in the dashboard
     for s in rows:
         state = "working" if s["busy"] else "ready"
         _out(f" {s['id']:<18} {tr(state):<9} " + tr("{runs}/{cap} today", runs=s["runs_today"], cap=s["cap"])
-             + f"  {s['model']}/{s['effort'] or 'std'}  {s['source']:<8} {s['description']}")
+             + f"  {s['model']}/{s['effort'] or tr('default')}  {source[s['source']]:<8} {s['description']}")
     _out(tr('Start: python -m aos skill <id> "task" [--model haiku|sonnet|opus|fable] [--effort low|medium|high|xhigh|max]'))
     return 0
 
@@ -479,7 +480,7 @@ def cmd_skill(cfg: Config, args) -> int:
     _out()
     cost = f" · ${job['cost_usd']:.4f}" if job.get("cost_usd") is not None else ""
     _out("[" + tr("{status} · {agent} · {model} · {seconds} s{cost} · job {id}", status=trc("job", job["status"]), agent=job["agent"],
-                  model=f"{job.get('model')}/{job.get('effort') or 'std'}", seconds=job["duration_s"], cost=cost, id=job["id"]) + "]")
+                  model=f"{job.get('model')}/{job.get('effort') or tr('default')}", seconds=job["duration_s"], cost=cost, id=job["id"]) + "]")
     return 0 if job["status"] == "ok" else 1
 
 

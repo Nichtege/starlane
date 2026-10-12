@@ -550,7 +550,10 @@
   "Check afterwards with: python3 -m aos doctor": "Danach prüfen mit: python3 -m aos doctor",
   "Missing: {path}": "Fehlt: {path}",
   "(run `aos setup` first)": "(zuerst `aos setup` ausführen)",
-  "Vault not found: {path}. Set [vault] path in aos.toml (or AOS_VAULT), or create a starter vault with `python -m aos init <folder>`.": "Vault nicht gefunden: {path}. Setz [vault] path in aos.toml (oder AOS_VAULT) oder leg mit `python -m aos init <folder>` einen Start-Vault an."
+  "Vault not found: {path}. Set [vault] path in aos.toml (or AOS_VAULT), or create a starter vault with `python -m aos init <folder>`.": "Vault nicht gefunden: {path}. Setz [vault] path in aos.toml (oder AOS_VAULT) oder leg mit `python -m aos init <folder>` einen Start-Vault an.",
+  "Project": "Projekt",
+  "User": "Benutzer",
+  "default": "Standard"
  },
  "web": {
   "Skip to content": "Zum Inhalt springen",
