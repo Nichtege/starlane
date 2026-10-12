@@ -12,6 +12,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.helpers import JS_I18N
+
 ROOT = Path(__file__).resolve().parent.parent
 HTML = (ROOT / "aos" / "web" / "dashboard.html").read_text(encoding="utf-8")
 SCRIPT = re.search(r"<script>\n(.*?)</script>", HTML, re.S).group(1)
@@ -55,7 +57,7 @@ def _blocks(css: str, opener: str):
 class HomescreenModelTests(unittest.TestCase):
     def _run(self, body: str):
         stubs = "".join(f"const {n} = () => null;\n" for n in sorted(set(re.findall(r"build: (\w+)", WIDGETS))))
-        src = f"""
+        src = JS_I18N + f"""
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const STORE = {{}};
 const store = {{ get(k) {{ return Object.prototype.hasOwnProperty.call(STORE, k) ? STORE[k] : null; }}, set(k, v) {{ STORE[k] = v; }} }};
@@ -614,8 +616,8 @@ class HomescreenContractTests(unittest.TestCase):
         self.assertIn("showView(v.id, { focus: true })", buttons)
         self.assertIn("'aria-label': v.label", buttons)              # the short tile shows the icons only
         self.assertIn("launchButtons()", card)
-        self.assertIn("'aria-label': 'Quick launch'", card)          # not "Apps": that is the name of another widget
-        self.assertRegex(WIDGETS, r"id: 'launch', label: 'Quick launch', side: 'l', sizes: \[\[6, 2\], \[6, 3\], \[6, 4\]\]")
+        self.assertIn("'aria-label': tr('Quick launch')", card)      # not "Apps": that is the name of another widget
+        self.assertRegex(WIDGETS, r"id: 'launch', label: tr\('Quick launch'\), side: 'l', sizes: \[\[6, 2\], \[6, 3\], \[6, 4\]\]")
         # names only where the whole grid with names fits: narrow tiles need 2 rows (4 columns from 350 px wide), short ones none; the rest scrolls
         self.assertRegex(HTML, r"@container tile \(\(max-width: 349px\) and \(max-height: 239px\)\) or \(\(min-width: 350px\) and \(max-height: 159px\)\) \{[^@]*\.launch-t \{ display: none; \}")
         self.assertIn(".launch-card { display: grid; align-content: center; overflow: auto;", HTML)
@@ -661,9 +663,9 @@ class HomescreenContractTests(unittest.TestCase):
         self.assertIn("glassControl(view, false)", menu)                           # the full control, first in the menu
         self.assertLess(menu.index("glassControl(view, false)"), menu.index("'Widgets'"))
         self.assertIn("view.editing ? glassControl(view, true) : null", bar)       # the compact one while arranging
-        self.assertIn("title: 'Customise: see-through and visible widgets'", bar)
+        self.assertIn("title: tr('Customise: see-through and visible widgets')", bar)
         ctl = _between("function glassControl(view, compact) {", "// The buttons at the top")
-        for needle in ("type: 'range'", "min: 0, max: 100, step: 1", "'aria-label': 'See-through, from matte to liquid'",
+        for needle in ("type: 'range'", "min: 0, max: 100, step: 1", "'aria-label': tr('See-through, from matte to liquid')",
                        "view.setGlass(+range.value, false)",       # while dragging: look only
                        "view.setGlass(+range.value, true)",        # on release: remember it
                        "view.setGlass(GLASS_DEFAULT, true)",       # double-click and the Default button

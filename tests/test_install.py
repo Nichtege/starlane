@@ -251,7 +251,7 @@ class FirstRunDetails(unittest.TestCase):
         import inspect
 
         from aos import server
-        lines = [ln for ln in inspect.getsource(server.serve).splitlines() if "print(f" in ln]
+        lines = [ln for ln in inspect.getsource(server.serve).splitlines() if "print(" in ln]
         self.assertTrue(any("Dashboard running at" in ln for ln in lines))
         for ln in lines:
             self.assertIn("flush=True", ln)                      # the key exists only in memory: a buffered link is lost for good

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .agents import find_claude
 from .config import INSTALLED, Config, aos_cmd
+from .i18n import tr
 from .scheduler import LOCK_STALE_S
 
 # One tick runs several routines in a row (up to 60 min each). If Windows stops it early, a half-finished run and
@@ -89,15 +90,15 @@ def install(cfg: Config, minutes: int = 5) -> int:
     minutes = max(1, min(int(minutes), 60))
     root = Path(cfg.project_root)
     if not _is_windows():
-        print("Not Windows: nothing changed. Add these lines with `crontab -e`")
-        print("(cron has a bare PATH, so the first line is what lets it find `claude`; merge it if you already have a PATH line):")
+        print(tr("Not Windows: nothing changed. Add these lines with `crontab -e`"))
+        print(tr("(cron has a bare PATH, so the first line is what lets it find `claude`; merge it if you already have a PATH line):"))
         for line in crontab_lines(cfg, minutes):
             print(line)
-        print(aos_cmd("Check afterwards with: python3 -m aos doctor"))
+        print(aos_cmd(tr("Check afterwards with: python3 -m aos doctor")))
         return 0
     script = root / "aos_tick.pyw"
     if not script.is_file():
-        print(f"Missing: {script}" + (" (run `aos setup` first)" if INSTALLED else ""))
+        print(tr("Missing: {path}", path=script) + (" " + tr("(run `aos setup` first)") if INSTALLED else ""))
         return 1
     ps = f"""
 $ErrorActionPreference = 'Stop'
@@ -109,20 +110,20 @@ Register-ScheduledTask -TaskName {_ps_quote(TASK_NAME)} -Action $action -Trigger
 """
     proc = _powershell(ps)
     if "registered" not in proc.stdout:
-        print("Setup failed:", (proc.stderr or proc.stdout).strip()[:400])
+        print(tr("Setup failed: {error}", error=(proc.stderr or proc.stdout).strip()[:400]))
         return 1
-    print(f"Task '{TASK_NAME}' registered: every {minutes} minutes, only while you are logged in, invisible.")
-    print(aos_cmd("Remove with: python -m aos uninstall-task"))
+    print(tr("Task '{name}' registered: every {n} minutes, only while you are logged in, invisible.", name=TASK_NAME, n=minutes))
+    print(aos_cmd(tr("Remove with: python -m aos uninstall-task")))
     return 0
 
 
 def uninstall() -> int:
     if not _is_windows():
-        print("Not Windows: nothing to remove (delete the crontab line yourself).")
+        print(tr("Not Windows: nothing to remove (delete the crontab line yourself)."))
         return 0
     proc = _powershell(
         f"if (Get-ScheduledTask -TaskName {_ps_quote(TASK_NAME)} -ErrorAction SilentlyContinue) "
         f"{{ Unregister-ScheduledTask -TaskName {_ps_quote(TASK_NAME)} -Confirm:$false; 'removed' }} else {{ 'absent' }}"
     )
-    print("Task removed." if "removed" in proc.stdout else "No task was registered.")
+    print(tr("Task removed.") if "removed" in proc.stdout else tr("No task was registered."))
     return 0

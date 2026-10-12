@@ -32,16 +32,21 @@ from . import agents as A
 from . import artifacts as AR
 from .config import Config
 from .dashboard import build_data, render_html
+from .i18n import tr
 from .routines import RoutineError, load_routines
 from .scheduler import Busy, Refused, run_now
+from .vault import VaultNotFound
 
 CACHE_SECONDS = 5
 MAX_BODY = 32 * 1024  # custom agents: up to 6000 characters of instructions (UTF-8) plus fields
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{0,40}$")
 PAGE_PATHS = ("/", "/index.html", "/dashboard.html")
-FORBIDDEN_PAGE = (b"<!doctype html><meta charset=\"utf-8\"><title>Starlane</title>"
-                  b"<p>This address needs the link that <code>aos serve</code> printed in the terminal "
-                  b"(<code>http://127.0.0.1:&lt;port&gt;/?k=...</code>). Open that link, or restart <code>aos serve</code>.</p>")
+
+
+def forbidden_page() -> bytes:
+    text = tr("This address needs the link that <code>aos serve</code> printed in the terminal "
+              "(<code>http://127.0.0.1:&lt;port&gt;/?k=...</code>). Open that link, or restart <code>aos serve</code>.")
+    return f'<!doctype html><meta charset="utf-8"><title>Starlane</title><p>{text}</p>'.encode("utf-8")
 
 
 class State:
@@ -124,10 +129,10 @@ def make_handler(state: State):
 
         def _fail(self, exc: Exception) -> None:
             # e.g. vault not reachable: a readable message instead of a silently dropped connection
-            if isinstance(exc, FileNotFoundError) and str(exc).startswith("Vault not found"):
+            if isinstance(exc, VaultNotFound):
                 self._json(500, {"ok": False, "error": state.scrub(str(exc))})  # a setup problem, not an internal error
                 return
-            self._json(500, {"ok": False, "error": state.scrub(f"Internal error: {type(exc).__name__}: {exc}")})
+            self._json(500, {"ok": False, "error": state.scrub(tr("Internal error: {kind}: {error}", kind=type(exc).__name__, error=exc))})
 
         def _page_ok(self) -> bool:
             """The page embeds the token: only a top-level navigation with the launch key of this server start gets it.
@@ -145,13 +150,13 @@ def make_handler(state: State):
 
         def _guard(self, need_token: bool) -> bool:
             if not self._host_ok():
-                self._json(403, {"ok": False, "error": "Host not allowed"})
+                self._json(403, {"ok": False, "error": tr("Host not allowed")})
                 return False
             if not self._origin_ok():
-                self._json(403, {"ok": False, "error": "Origin not allowed"})
+                self._json(403, {"ok": False, "error": tr("Origin not allowed")})
                 return False
             if need_token and not self._token_ok():
-                self._json(401, {"ok": False, "error": "Token missing or wrong"})
+                self._json(401, {"ok": False, "error": tr("Token missing or wrong")})
                 return False
             return True
 
@@ -165,7 +170,7 @@ def make_handler(state: State):
                 if not self._guard(False):
                     return
                 if not self._page_ok():
-                    self._send(403, FORBIDDEN_PAGE, "text/html; charset=utf-8",
+                    self._send(403, forbidden_page(), "text/html; charset=utf-8",
                                {"Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'"})
                     return
                 nonce = secrets.token_urlsafe(16)
@@ -198,14 +203,14 @@ def make_handler(state: State):
                 except Exception as exc:  # noqa: BLE001
                     self._fail(exc)
                     return
-                self._json(200, {"ok": True, "job": job}) if job else self._json(404, {"ok": False, "error": "unknown job"})
+                self._json(200, {"ok": True, "job": job}) if job else self._json(404, {"ok": False, "error": tr("unknown job")})
             elif re.fullmatch(r"/api/agent-defs/[a-z0-9\-]+", path):
                 if not self._guard(True):
                     return
                 try:
                     self._json(200, {"ok": True, "agent": AD.read(state.cfg, path.rsplit("/", 1)[1])})
                 except KeyError:
-                    self._json(404, {"ok": False, "error": "unknown agent"})
+                    self._json(404, {"ok": False, "error": tr("unknown agent")})
                 except A.Refused as exc:
                     self._json(exc.code, {"ok": False, "error": str(exc)})
                 except Exception as exc:  # noqa: BLE001
@@ -218,34 +223,34 @@ def make_handler(state: State):
                 except Exception as exc:  # noqa: BLE001
                     self._fail(exc)
                     return
-                self._json(200, {"ok": True, "artifact": art}) if art else self._json(404, {"ok": False, "error": "unknown artifact"})
+                self._json(200, {"ok": True, "artifact": art}) if art else self._json(404, {"ok": False, "error": tr("unknown artifact")})
             elif path == "/healthz":
                 self._json(200, {"ok": True}) if self._host_ok() else self._json(403, {"ok": False})
             else:
-                self._json(404, {"ok": False, "error": "not found"})
+                self._json(404, {"ok": False, "error": tr("not found")})
 
         def _read_json(self) -> dict | None:
             """Read a JSON body (application/json only, at most MAX_BODY). On error the response has already been sent."""
             try:
                 length = int(self.headers.get("Content-Length") or "")
             except ValueError:
-                self._json(411, {"ok": False, "error": "Content-Length missing"})
+                self._json(411, {"ok": False, "error": tr("Content-Length missing")})
                 return None
             # Still read and discard moderately large bodies: otherwise Windows resets the connection before
             # the browser gets the error message. Very large ones are not read at all.
             raw = self.rfile.read(length) if 0 <= length <= 4 * MAX_BODY else b""
             if length < 0 or length > MAX_BODY:
-                self._json(413, {"ok": False, "error": f"Request too large (at most {MAX_BODY // 1024} KB)"})
+                self._json(413, {"ok": False, "error": tr("Request too large (at most {kb} KB)", kb=MAX_BODY // 1024)})
                 return None
             if self.headers.get_content_type() != "application/json":
-                self._json(415, {"ok": False, "error": "Content-Type must be application/json"})
+                self._json(415, {"ok": False, "error": tr("Content-Type must be application/json")})
                 return None
             try:
                 body = json.loads(raw.decode("utf-8"))
             except (UnicodeDecodeError, json.JSONDecodeError):
                 body = None
             if not isinstance(body, dict):
-                self._json(400, {"ok": False, "error": "Body must be a JSON object"})
+                self._json(400, {"ok": False, "error": tr("Body must be a JSON object")})
                 return None
             return body
 
@@ -256,7 +261,7 @@ def make_handler(state: State):
             try:
                 job = A.submit_skill(state.cfg, sid, body.get("instruction"), model=body.get("model"), effort=body.get("effort"))
             except KeyError:
-                self._json(404, {"ok": False, "error": "unknown skill"})
+                self._json(404, {"ok": False, "error": tr("unknown skill")})
                 return
             except A.Refused as exc:
                 self._json(exc.code, {"ok": False, "error": str(exc)})
@@ -280,7 +285,7 @@ def make_handler(state: State):
                     job = A.submit(state.cfg, aid, body.get("instruction"), thread=body.get("thread"),
                                    model=body.get("model"), effort=body.get("effort"))
             except KeyError:
-                self._json(404, {"ok": False, "error": "unknown agent"})
+                self._json(404, {"ok": False, "error": tr("unknown agent")})
                 return
             except A.Refused as exc:
                 self._json(exc.code, {"ok": False, "error": str(exc)})
@@ -303,7 +308,7 @@ def make_handler(state: State):
                 else:
                     agent = AD.update(state.cfg, aid, body)
             except KeyError:
-                self._json(404, {"ok": False, "error": "unknown agent"})
+                self._json(404, {"ok": False, "error": tr("unknown agent")})
                 return
             except (A.Refused, A.AgentError) as exc:
                 self._json(getattr(exc, "code", 500), {"ok": False, "error": str(exc)})
@@ -342,7 +347,7 @@ def make_handler(state: State):
                 return
             m = re.fullmatch(r"/api/run/([a-z0-9\-]+)", path)
             if not m:
-                self._json(404, {"ok": False, "error": "not found"})
+                self._json(404, {"ok": False, "error": tr("not found")})
                 return
             if not self._guard(True):
                 return
@@ -353,7 +358,7 @@ def make_handler(state: State):
                 self._json(500, {"ok": False, "error": state.scrub(str(exc))})
                 return
             if not ID_RE.match(rid) or rid not in known:
-                self._json(404, {"ok": False, "error": "unknown routine"})
+                self._json(404, {"ok": False, "error": tr("unknown routine")})
                 return
             try:
                 rec = run_now(state.cfg, rid, respect_limits=True)
@@ -361,10 +366,10 @@ def make_handler(state: State):
                 self._json(403, {"ok": False, "error": str(exc)})
                 return
             except KeyError:  # routines.toml changed between the two reads
-                self._json(404, {"ok": False, "error": "unknown routine"})
+                self._json(404, {"ok": False, "error": tr("unknown routine")})
                 return
             except Busy:
-                self._json(409, {"ok": False, "error": "Something is already running, try again in a moment"})
+                self._json(409, {"ok": False, "error": tr("Something is already running, try again in a moment")})
                 return
             except Exception as exc:  # noqa: BLE001
                 self._fail(exc)
@@ -376,14 +381,14 @@ def make_handler(state: State):
             path = self.path.split("?", 1)[0]
             m = re.fullmatch(r"/api/agent-defs/([a-z0-9\-]+)", path)
             if not m or not ID_RE.match(m.group(1)):
-                self._json(405, {"ok": False, "error": "Method not allowed"})
+                self._json(405, {"ok": False, "error": tr("Method not allowed")})
                 return
             if not self._guard(True):
                 return
             try:
                 AD.delete(state.cfg, m.group(1))
             except KeyError:
-                self._json(404, {"ok": False, "error": "unknown agent"})
+                self._json(404, {"ok": False, "error": tr("unknown agent")})
                 return
             except (A.Refused, A.AgentError) as exc:
                 self._json(getattr(exc, "code", 500), {"ok": False, "error": str(exc)})
@@ -395,7 +400,7 @@ def make_handler(state: State):
             self._json(200, {"ok": True})
 
         def do_PUT(self):
-            self._json(405, {"ok": False, "error": "Method not allowed"})
+            self._json(405, {"ok": False, "error": tr("Method not allowed")})
 
         do_PATCH = do_PUT
 
@@ -425,10 +430,10 @@ def serve(cfg: Config, port: int, open_browser: bool = True) -> int:
     try:
         httpd, state = create_server(cfg, port)
     except OSError as exc:
-        print(f"Port {port} not available (is the dashboard already running? Otherwise `aos serve --port 8766`): {exc}", flush=True)
+        print(tr("Port {port} not available (is the dashboard already running? Otherwise `aos serve --port 8766`): {error}", port=port, error=exc), flush=True)
         return 1
     url = state.launch_url
-    print(f"Dashboard running at {url} (this machine only; the link is valid until the server stops). Stop with Ctrl+C.", flush=True)
+    print(tr("Dashboard running at {url} (this machine only; the link is valid until the server stops). Stop with Ctrl+C.", url=url), flush=True)
     log = state.cfg.data_dir / "server.log"
 
     def note(msg: str) -> None:
@@ -448,7 +453,7 @@ def serve(cfg: Config, port: int, open_browser: bool = True) -> int:
         # (on macOS / Linux a child in its own session never sends one)
         if sys.platform == "win32" and time.monotonic() - A.LAST_ACTIVITY < 10:
             note("Ctrl+C shortly after a job ignored")
-            print("\nCtrl+C right after a job ignored. Press it again in a few seconds to stop.")
+            print("\n" + tr("Ctrl+C right after a job ignored. Press it again in a few seconds to stop."), flush=True)
             return
         raise KeyboardInterrupt
 
@@ -464,7 +469,7 @@ def serve(cfg: Config, port: int, open_browser: bool = True) -> int:
         note("stopped (serve_forever returned)")
     except KeyboardInterrupt:
         note("stopped by Ctrl+C")
-        print("\nStopped.")
+        print("\n" + tr("Stopped."), flush=True)
     except BaseException as exc:  # noqa: BLE001 - record the reason, then re-raise
         note(f"crashed: {type(exc).__name__}: {exc}")
         raise

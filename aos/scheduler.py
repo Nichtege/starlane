@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .config import INSTALLED, Config
+from .i18n import tr, tr_mark
 from .routines import Routine, load_routines
 
 LOCK_STALE_S = 75 * 60  # longer than the largest allowed routine time limit (60 min) plus a margin
@@ -29,6 +30,9 @@ NOTE_LIMIT = 600
 REPLACE_TRIES = 20  # 50 ms each
 # Windows: start routine processes (and their git/claude) without a flashing console window; 0 elsewhere
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+# Run status and trigger codes (runs.jsonl) as people read them: trc("run", status), trc("trigger", trigger)
+RUN_STATUS = (tr_mark("ok", "run"), tr_mark("failed", "run"), tr_mark("timeout", "run"), tr_mark("skipped", "run"))
+TRIGGERS = (tr_mark("schedule", "trigger"), tr_mark("manual", "trigger"))
 
 
 # --- State ----------------------------------------------------------------------------
@@ -216,9 +220,9 @@ def run_routine(cfg: Config, routine: Routine, trigger: str, slot: datetime | No
             status = "failed"
             note = ((stderr or "").strip() or out)[-NOTE_LIMIT:]
     except subprocess.TimeoutExpired:
-        status, rc, note = "timeout", -1, f"Aborted after {routine.timeout_s} s"
+        status, rc, note = "timeout", -1, tr("Aborted after {n} s", n=routine.timeout_s)
     except OSError as exc:
-        status, rc, note = "failed", -1, f"Could not start: {exc}"
+        status, rc, note = "failed", -1, tr("Could not start: {error}", error=exc)
     return {
         "id": routine.id,
         "trigger": trigger,
@@ -281,7 +285,7 @@ def tick(cfg: Config, now: datetime | None = None, routines: list[Routine] | Non
                 entry["last_slot"] = _iso(slot)
                 if entry["runs_today"] >= r.max_runs_per_day:
                     rec = {"id": r.id, "trigger": "schedule", "slot": _iso(slot), "started": _iso(now), "finished": _iso(now),
-                           "duration_s": 0, "status": "skipped", "rc": 0, "note": f"Daily cap of {r.max_runs_per_day} reached", "machine": cfg.machine}
+                           "duration_s": 0, "status": "skipped", "rc": 0, "note": tr("Daily cap of {n} reached", n=r.max_runs_per_day), "machine": cfg.machine}
                     entry["last_note"] = rec["note"]
                 else:
                     entry["runs_today"] += 1
@@ -310,7 +314,7 @@ def run_now(cfg: Config, routine_id: str, routines: list[Routine] | None = None,
     routines = routines if routines is not None else load_routines(cfg.routines_file)
     found = next((r for r in routines if r.id == routine_id), None)
     if found is None:
-        raise KeyError(f"Unknown routine: {routine_id}")
+        raise KeyError(tr("Unknown routine: {id}", id=routine_id))
     now = datetime.now().replace(microsecond=0)
     with TickLock(cfg.lock_file):
         state = load_state(cfg)
@@ -318,13 +322,13 @@ def run_now(cfg: Config, routine_id: str, routines: list[Routine] | None = None,
         _roll_day(entry, now.date())
         if respect_limits:
             if not found.enabled:
-                raise Refused("Routine is disabled (enabled = false in routines.toml)")
+                raise Refused(tr("Routine is disabled (enabled = false in routines.toml)"))
             if not found.runs_on(cfg.machine):
-                raise Refused(f"Routine only runs on: {', '.join(found.machine)}")
+                raise Refused(tr("Routine only runs on: {machines}", machines=", ".join(found.machine)))
             if entry.get("blocked"):
-                raise Refused("Routine is blocked, run `python -m aos unblock " + found.id + "` first")
+                raise Refused(tr("Routine is blocked, run `python -m aos unblock {id}` first", id=found.id))
             if entry["runs_today"] >= found.max_runs_per_day:
-                raise Refused(f"Daily cap of {found.max_runs_per_day} reached")
+                raise Refused(tr("Daily cap of {n} reached", n=found.max_runs_per_day))
         entry["runs_today"] += 1
         save_state(cfg, state)
         rec = runner(cfg, found, "manual", None, now)

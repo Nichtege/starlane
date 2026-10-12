@@ -1,12 +1,16 @@
 # Starlane configuration. Write paths with "/", also on Windows.
 # Every key is optional; the values below are the defaults unless marked as an example.
-# Environment overrides: AOS_CONFIG (this file), AOS_VAULT, AOS_DATA, AOS_MACHINE, AOS_USER, AOS_LANGUAGE.
+# Environment overrides: AOS_CONFIG (this file), AOS_VAULT, AOS_DATA, AOS_MACHINE, AOS_USER, AOS_LANGUAGE,
+# AOS_UI_LANGUAGE.
 
 [user]
 # How the agents address and refer to you (prompts, digest greeting).
 name = "You"
-# The language every agent and skill replies in. Generated files (digest, vault check) stay English.
-language = "English"
+# Language of the terminal, the dashboard and the generated notes (digest, vault check, `aos init`):
+# "en" or "de" (see docs/languages.md). Override per shell with AOS_UI_LANGUAGE.
+ui_language = "en"
+# The language every agent and skill replies in. Default: the interface language (English, Deutsch).
+# language = "English"
 
 [vault]
 # The folder of Markdown notes the system reads (an Obsidian vault works as is). On a server: the path of the clone.
@@ -37,6 +41,10 @@ agents = "agents.toml"
 [digest]
 # Target folder inside the vault. This is the only place where the system writes into the vault.
 dir = "AI/Digest"
+# File names inside it: the current digest, the folder of daily copies, the weekly review draft (`aos claude-digest`).
+# file = "latest.md"
+# archive = "archive"
+# review = "weekly-review.md"
 # Daily copies older than this are removed.
 keep_days = 14
 # How many days ahead the digest looks for deadlines and appointments.

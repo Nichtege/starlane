@@ -30,6 +30,9 @@ Data contract (`data.json`, version 1); everything is read from files:
   artifacts [{id,title,kind:"html"|"md"|"job",group,path,mtime,size,excerpt}]   newest first, at most 300
   conventions {dirs:{projects,areas,journal,inbox,ideas,resources,ai,archive}, brain_map, index_note, status_done,
           digest_dir}   how the vault is organised ([conventions]); the page falls back to the English defaults
+
+The page text itself is not part of the data: render_html embeds the "web" section of the locale ([user] ui_language) as
+<script id="aos-i18n">, and translates the {{t:...}} markers of the static HTML (aos/i18n.py, docs/languages.md).
   api     null (file mode, view only) or (server mode)
           {token, run: "/api/run/", data: "/api/data", agents: "/api/agents/", jobs: "/api/jobs", atlas: "/api/atlas",
            skills: "/api/skills/" (POST /api/skills/<id> {instruction, model?, effort?}),
@@ -40,7 +43,9 @@ Data contract (`data.json`, version 1); everything is read from files:
 from __future__ import annotations
 
 import base64
+import html as _html
 import json
+import re
 from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -51,6 +56,7 @@ from . import digest as D
 from . import skills as S
 from .config import Config
 from .graph import build_graph, changes_by_day
+from .i18n import web_catalog
 from .mapcheck import run_checks
 from .routines import RoutineError
 from .scheduler import MAX_LOG_LINES, board, load_state, read_runs
@@ -86,7 +92,7 @@ def build_data(cfg: Config, now: datetime | None = None, api: dict | None = None
     except OSError:
         skills = []
     graph = build_graph(vault, cfg.conv)
-    hidden = {n["id"] for n in graph["nodes"] if n["id"].startswith(f"{cfg.digest_dir}/{D.ARCHIVE_DIR}/")}
+    hidden = {n["id"] for n in graph["nodes"] if n["id"].startswith(f"{cfg.digest_dir}/{cfg.conv.digest_archive}/")}
     nodes = [n for n in graph["nodes"] if n["id"] not in hidden]
     edges = [e for e in graph["edges"] if e["s"] not in hidden and e["t"] not in hidden]
     issues = [i for i in health["issues"] if i["severity"] != "info"] + [i for i in health["issues"] if i["severity"] == "info"][:MAX_INFO_ISSUES]
@@ -129,11 +135,27 @@ def _json_for_html(data: dict) -> str:
     return text.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
 
-def render_html(data: dict, template: Path = TEMPLATE) -> str:
+I18N_MARKER = "__AOS_I18N__"
+TEXT_MARKER = re.compile(r"\{\{t:(.+?)\}\}")  # static page text: {{t:English}} -> translation (HTML-escaped)
+
+
+def render_html(data: dict, template: Path = TEMPLATE, lang: str | None = None) -> str:
+    """The page in the interface language (default: the current one, see i18n.use). The data goes in last, so nothing
+    from the vault can ever be taken for a text marker."""
     html = template.read_text(encoding="utf-8")
     marker = "__AOS_DATA__"
     if marker not in html:
         raise ValueError(f"Placeholder {marker} is missing in {template}")
+    cat = web_catalog(lang)
+    strings = cat["strings"]
+
+    def text(m: re.Match) -> str:
+        source = _html.unescape(m.group(1))
+        return _html.escape(strings.get(source, source), quote=True)
+
+    html = TEXT_MARKER.sub(text, html)
+    html = html.replace('<html lang="en">', f'<html lang="{cat["lang"]}">', 1)
+    html = html.replace(I18N_MARKER, _json_for_html(cat), 1)
     html = html.replace(marker, _json_for_html(data), 1)
     return html.replace(FONT_MARKER, _font_css(template.parent / "fonts"), 1)
 

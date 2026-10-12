@@ -13,6 +13,9 @@ and read-only?".
 - **No personal data** in code, prompts, docs or fixtures: no real names, paths, e-mail addresses or private note
   titles.
 - **English** for code, comments, docs and shipped prompts.
+- **Every text a person reads is marked** (`tr`, `trc`, `trn`, `tr_mark` in Python; `tr`, `trc`, `trn`, `trm` and
+  `{{t:...}}` in the dashboard) and translated in every file in `aos/locales/`; `tests/test_i18n.py` fails until it is.
+  A change to a guide in `docs/` goes into its German copy in `docs/de/` too. See [docs/languages.md](docs/languages.md).
 
 ## Where things live
 

@@ -10,6 +10,12 @@ from aos.config import load_config
 
 TODAY_ISO = "2026-10-09"  # Friday, ISO week 2026-W41
 
+# The dashboard's interface-language runtime (tr, trc, trn, trm), cut from the page itself, for the Node tests that run
+# slices of the script: without a document it falls back to English, so the slices behave like the bare template.
+_DASH = (Path(__file__).resolve().parent.parent / "aos" / "web" / "dashboard.html").read_text(encoding="utf-8")
+_TRM = "const trm = msg => msg;"
+JS_I18N = _DASH[_DASH.index("const I18N = (() => {"): _DASH.index(_TRM) + len(_TRM)] + "\n"
+
 # Follows the default Conventions (English frontmatter keys, headings and folders).
 FILES = {
     "index.md": """---

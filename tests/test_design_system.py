@@ -148,7 +148,7 @@ class TabWiringTests(unittest.TestCase):
     def test_page_class_covers_exactly_the_non_os_tabs(self):
         js = _script()
         self.assertIn("classList.toggle('is-page', id !== 'today' && id !== 'os' && id !== 'agents')", js)
-        ids = re.findall(r"\{ id: '(\w+)', label: '[^']+' \}", js[js.index("const VIEWS = ["): js.index("// Areas (top-level folder)")])
+        ids = re.findall(r"\{ id: '(\w+)', label: (?:tr\()?'[^']+'\)? \}", js[js.index("const VIEWS = ["): js.index("// Areas (top-level folder)")])
         self.assertEqual(set(ids) - {"today", "os", "agents"}, {"skills", "artifacts", "rings", "links", "timeline", "health"})
 
     def test_health_view_markup(self):
@@ -159,8 +159,8 @@ class TabWiringTests(unittest.TestCase):
         for bad in (".innerHTML", "insertAdjacentHTML", "eval("):
             self.assertNotIn(bad, view)
         # the counts still say what they count, singular and plural
-        self.assertIn("'error' : 'errors'", view)
-        self.assertIn("'warning' : 'warnings'", view)
+        self.assertIn("trc('severity', 'error') : trc('severity', 'errors')", view)
+        self.assertIn("trc('severity', 'warning') : trc('severity', 'warnings')", view)
 
     def test_view_switch_refreshes_the_lenses(self):
         js = _script()

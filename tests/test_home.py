@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.helpers import JS_I18N
+
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "aos" / "web" / "dashboard.html"
 
@@ -64,7 +66,7 @@ class HomeStaticTests(unittest.TestCase):
 
     def test_stage_core_is_a_real_button_with_label(self):
         block = _home_block(_script())
-        self.assertIn("class: 'hs-core', 'aria-label': 'Open Second Brain'", block)
+        self.assertIn("class: 'hs-core', 'aria-label': tr('Open Second Brain')", block)
         self.assertNotIn("role: 'listitem'", block)   # balls stay real buttons (do not override the role)
         self.assertIn("el.inert = true", block)       # filtered-out balls are neither readable nor operable
         self.assertIn("'Home', 'End'", block)         # arrow keys instead of 60 tab stops
@@ -73,7 +75,7 @@ class HomeStaticTests(unittest.TestCase):
     def test_edit_mode_has_keyboard_size_and_page_controls(self):
         js = _script()
         for needle in ("hs-sizes", "hs-rz", "hs-flowbtns", "hs-dots", "ArrowLeft", "e.key === 'Delete'",
-                       "e.key === 'PageUp' || e.key === 'PageDown'", "'aria-label': 'Size of '", "'aria-label': 'Pages'",
+                       "e.key === 'PageUp' || e.key === 'PageDown'", "'aria-label': tr('Size of {widget}'", "'aria-label': tr('Pages')",
                        "'aria-live': 'polite'", "Reset layout"):
             self.assertIn(needle, js)
         # without a pointer a widget is moved and resized with the arrow keys (Shift = size), one cell per press
@@ -131,7 +133,7 @@ const store = {{ get(k) {{ return Object.prototype.hasOwnProperty.call(STORE, k)
         geometry = js[js.index("const GALAXY_PALETTE"): js.index("function glowSprite(")]
         iso = js[js.index("function isoWeek(d)"): js.index("function analogClock(")]
         folder = js[js.index("const OS_FOLDER_PAL"): js.index("// Model: nodes + edges")]
-        src = prelude + "const HOME_PALETTE = ['#1','#2','#3','#4','#5','#6'];\n" + geometry + iso + folder + widgets + "\n" + body
+        src = JS_I18N + prelude + "const HOME_PALETTE = ['#1','#2','#3','#4','#5','#6'];\n" + geometry + iso + folder + widgets + "\n" + body
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "t.js"
             f.write_text(src, encoding="utf-8")

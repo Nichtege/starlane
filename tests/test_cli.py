@@ -31,7 +31,7 @@ class CliTests(TempVaultCase):
     def test_mapcheck_strict_exit_codes(self):
         code, out = run(self.cfg_path, "mapcheck", "--strict")
         self.assertEqual(code, 1)  # broken link in the test vault
-        self.assertIn("errors", out)
+        self.assertIn("1 error,", out)  # singular and plural right (mapcheck.count_text)
         (self.vault_dir / "Resources" / "knowledge.md").write_text("---\ntype: knowledge\ncreated: 2026-10-01\n---\n# Knowledge\n", encoding="utf-8")
         code, _ = run(self.cfg_path, "mapcheck", "--strict")
         self.assertEqual(code, 0)

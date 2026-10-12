@@ -13,7 +13,7 @@ from aos.config import Conventions
 from aos.mapcheck import run_checks
 from aos.routines import RoutineError, Schedule, load_routines
 from aos.vault import Vault, parse_frontmatter
-from tests.helpers import TempVaultCase
+from tests.helpers import JS_I18N, TempVaultCase
 
 TODAY = date(2026, 10, 9)
 NOW = datetime(2026, 10, 9, 6, 30)
@@ -558,7 +558,7 @@ class DashboardJsTests(unittest.TestCase):
                 ".map(k => typeof k === 'string' ? k : k.text).join('') });\n")
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "t.js"
-            f.write_text(stub + areas + link + "\n" + body, encoding="utf-8")
+            f.write_text(JS_I18N + stub + areas + link + "\n" + body, encoding="utf-8")
             r = subprocess.run(["node", str(f)], capture_output=True, text=True, timeout=30)
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)

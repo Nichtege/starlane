@@ -36,7 +36,7 @@ The system never writes into `.obsidian/` *with the default settings*: it only w
 - Only routines from `routines.toml` can be started, and only through the whitelist. There is no file serving by path and no shell access over HTTP.
 - Error messages the server sends replace the vault, data, project and home folder paths with placeholders (`<vault>`, `<data>`, `<project>`, `~`). The notes of a job (for example "could not start: ..." from the operating system) are shown only to you, behind the token, and can still contain a path.
 - **Content Security Policy**: scripts only with a per-request nonce, no network except the server itself (`connect-src 'self'`), `frame-ancestors 'none'`; inline styles are allowed (`style-src 'unsafe-inline'`). Also `no-store` and `nosniff`.
-- Data from the vault (titles, paths) is embedded escaped in the HTML and inserted in the browser as text only (never as HTML). A title like `</script>` cannot take over the page.
+- Data from the vault (titles, paths) is embedded escaped in the HTML and inserted in the browser as text only (never as HTML). A title like `</script>` cannot take over the page. The same goes for the interface texts (`aos/locales/*.json`): they are embedded escaped as JSON in a block of their own (`type="application/json"`), inserted in the browser as text, and the server HTML-escapes the ones it puts into the fixed HTML of the page.
 
 ## Agents (`agents.toml`)
 You give an agent a task in the dashboard or with `aos agent <id> "..."`. These rules apply:

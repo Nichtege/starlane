@@ -19,6 +19,7 @@ from pathlib import Path
 
 from . import agents as A
 from .config import Config
+from .i18n import tr, tr_mark
 from .mapcheck import redact
 from .vault import _is_link, parse_frontmatter, strip_markup
 
@@ -31,6 +32,17 @@ _H1_RE = re.compile(r"<h1[^>]*>(.*?)</h1>", re.I | re.S)
 _TAG_RE = re.compile(r"<[^>]+>")
 _STYLE_RE = re.compile(r"<(script|style)\b.*?</\1>", re.I | re.S)
 _ID_RE = re.compile(r"(f|j)-[0-9a-f]{12}")
+# Group names are data (the dashboard filters by them and reads the skill id out of "Skill: <id>"): they stay English
+# and are translated where they are shown (group_label here, artGroup in the dashboard).
+GROUPS = (tr_mark("Artifacts"), tr_mark("Output"), tr_mark("Digest"), tr_mark("Vault artifacts"), tr_mark("Archive"))
+_JOB_GROUP_RE = re.compile(r"^(Skill|Agent): (.+)$")
+
+
+def group_label(group: str) -> str:
+    m = _JOB_GROUP_RE.match(group or "")
+    if m:
+        return tr("Skill: {id}", id=m.group(2)) if m.group(1) == "Skill" else tr("Agent: {id}", id=m.group(2))
+    return tr(group)
 
 
 def _key_id(prefix: str, key: str) -> str:

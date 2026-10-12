@@ -13,6 +13,10 @@ is a git checkout). Agents can read; they cannot write, run commands or push any
 
 The command is `starlane` (the short form `aos` does the same, and so does `python -m aos`; the guides use the latter).
 
+**Deutsch?** Set `ui_language = "de"` under `[user]` in `aos.toml`: the terminal, the dashboard, the digest and the vault
+check switch to German, and the agents reply in German. The guides are translated in [docs/de/](docs/de/README.md);
+how languages work and how to add one: [docs/languages.md](docs/languages.md).
+
 ## What you get
 
 | Layer | What it does | Command |
@@ -99,7 +103,9 @@ ready prompt for Claude Code for each step. The full guide: [docs/getting-starte
 
 ## Make it yours
 
-- **Your name and language**: `[user]` in `aos.toml` (`name`, `language`). Agents reply in that language.
+- **Your name and language**: `[user]` in `aos.toml` (`name`, `ui_language`, `language`). `ui_language` is the
+  interface (`en` or `de`), `language` the language agents reply in (default: the interface language). See
+  [docs/languages.md](docs/languages.md).
 - **Your vault's structure**: if your notes use other frontmatter keys, folders or headings (or another language), set
   `[conventions]` once instead of renaming notes. See [docs/vault-conventions.md](docs/vault-conventions.md).
 - **Your agents**: [docs/agents.md](docs/agents.md). The shipped catalog (`agents.toml`) has eight; yours go to
@@ -124,6 +130,7 @@ Details, limits and what this does *not* protect against: [docs/security.md](doc
 
 ```
 aos/            the code (Python, stdlib only); aos/web/dashboard.html is the whole frontend
+aos/locales/    interface languages besides English (de.json)
 agents.toml     shipped agent catalog      agents/    their prompts
 skills/         shipped skills             routines.toml  the schedule
 aos.toml        your configuration         docs/      guides, architecture, security
@@ -134,7 +141,8 @@ examples/       the demo vault, a custom agent   tests/  unittest suite
 `python -m unittest discover -s tests -t .`.
 
 More: [getting started](docs/getting-started.md) · [architecture](docs/architecture.md) · [design](docs/design.md) · [agents](docs/agents.md) · [skills](docs/skills.md) ·
-[vault conventions](docs/vault-conventions.md) · [running on a server](docs/vps-setup.md) · [contributing](CONTRIBUTING.md)
+[vault conventions](docs/vault-conventions.md) · [languages](docs/languages.md) · [running on a server](docs/vps-setup.md) ·
+[contributing](CONTRIBUTING.md) · [auf Deutsch](docs/de/README.md)
 
 ## License
 

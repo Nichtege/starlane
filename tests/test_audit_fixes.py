@@ -21,7 +21,7 @@ from aos import tasksched
 from aos.config import PROJECT_ROOT
 from aos.dashboard import build_data
 from aos.routines import load_routines
-from aos.vault import Vault
+from aos.vault import Vault, VaultNotFound
 from tests.helpers import TempVaultCase
 
 NOW = datetime(2026, 10, 9, 7, 0, 0)
@@ -174,7 +174,7 @@ class ServerFixes(TempVaultCase):
         return resp.status, body
 
     def test_build_errors_become_a_readable_500(self):
-        with mock.patch.object(SV, "build_data", side_effect=FileNotFoundError("Vault not found: X")):
+        with mock.patch.object(SV, "build_data", side_effect=VaultNotFound("Vault not found: X")):
             status, body = self.get("/?k=" + self.state.launch_key)  # the page needs the launch key of this server start
             self.assertEqual(status, 500)
             self.assertIn("Vault not found", json.loads(body)["error"])

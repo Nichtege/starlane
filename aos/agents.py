@@ -32,6 +32,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from .config import Config
+from .i18n import tr, tr_mark
 from .mapcheck import redact
 from . import skills as S
 from .scheduler import NO_WINDOW, _kill_tree, _own_session, atomic_write
@@ -70,6 +71,10 @@ JOB_ID_RE = re.compile(r"^[a-f0-9]{12}$")
 MODEL_RE = re.compile(r"^[a-z0-9][a-z0-9.\-]{0,59}$")  # no leading "-": must never be read as an option
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
 PERSONA_MAX = 40
+# Job status codes (jobs.jsonl) as people read them: trc("job", status). The prompts below stay English on purpose:
+# they go to Claude, and the reply language is [user] language.
+JOB_STATUS = (tr_mark("running", "job"), tr_mark("ok", "job"), tr_mark("failed", "job"), tr_mark("timeout", "job"),
+              tr_mark("refused", "job"))
 
 
 def _persona_value(value, default: str) -> str:
@@ -208,7 +213,7 @@ class Agent:
 def _int(item: dict, key: str, default: int, aid: str) -> int:
     value = item.get(key, default)
     if isinstance(value, bool) or not isinstance(value, int):
-        raise AgentError(f"Agent {aid}: `{key}` must be an integer, not {value!r}")
+        raise AgentError(tr("Agent {id}: `{key}` must be an integer, not {value}", id=aid, key=key, value=repr(value)))
     return value
 
 
@@ -237,41 +242,42 @@ def _load_file(path: Path, seen: set[str], custom: bool) -> list[Agent]:
         try:
             raw = tomllib.load(fh)
         except tomllib.TOMLDecodeError as exc:
-            raise AgentError(f"{path.name} is not valid TOML: {exc}") from exc
+            raise AgentError(tr("{file} is not valid TOML: {error}", file=path.name, error=exc)) from exc
     base = path.parent.resolve()
     out: list[Agent] = []
     for i, item in enumerate(raw.get("agent", []), start=1):
         aid = str(item.get("id", "")).strip()
         if not ID_RE.match(aid):
-            raise AgentError(f"Agent {i}: `id` is missing or invalid (only a-z, 0-9, hyphen): '{aid}'")
+            raise AgentError(tr("Agent {n}: `id` is missing or invalid (only a-z, 0-9, hyphen): '{id}'", n=i, id=aid))
         if aid in seen:
-            raise AgentError(f"Duplicate agent id: {aid} ({path.name})")
+            raise AgentError(tr("Duplicate agent id: {id} ({file})", id=aid, file=path.name))
         if aid.startswith("skill-"):
-            raise AgentError(f"Agent {aid}: the prefix 'skill-' is reserved for skill runs")
+            raise AgentError(tr("Agent {id}: the prefix 'skill-' is reserved for skill runs", id=aid))
         if RESERVED_IDS.match(aid):
-            raise AgentError(f"Agent {aid}: this name is reserved by Windows (con, prn, aux, nul, com1-9, lpt1-9)")
+            raise AgentError(tr("Agent {id}: this name is reserved by Windows (con, prn, aux, nul, com1-9, lpt1-9)", id=aid))
         if aid == ATLAS_ID or aid.startswith("atlas-"):
-            raise AgentError(f"Agent {aid}: 'atlas' and the prefix 'atlas-' are reserved for the coordinator")
+            raise AgentError(tr("Agent {id}: 'atlas' and the prefix 'atlas-' are reserved for the coordinator", id=aid))
         seen.add(aid)
         tools = item.get("tools", DEFAULT_TOOLS)
         if not isinstance(tools, list) or not tools or not all(isinstance(t, str) for t in tools):
-            raise AgentError(f"Agent {aid}: `tools` must be a non-empty list, e.g. {DEFAULT_TOOLS}")
+            raise AgentError(tr("Agent {id}: `tools` must be a non-empty list, e.g. {example}", id=aid, example=DEFAULT_TOOLS))
         bad = [t for t in tools if t not in ALLOWED_TOOLS]
         if bad:
-            raise AgentError(f"Agent {aid}: tool(s) {', '.join(bad)} not allowed. Allowed: {', '.join(ALLOWED_TOOLS)} (read-only)")
+            raise AgentError(tr("Agent {id}: tool(s) {bad} not allowed. Allowed: {allowed} (read-only)", id=aid, bad=", ".join(bad),
+                                allowed=", ".join(ALLOWED_TOOLS)))
         if (any(t in VAULT_TOOLS for t in tools) and any(t in WEB_TOOLS for t in tools)
                 and item.get("mixed") is not True):
-            raise AgentError(f"Agent {aid}: vault tools and web tools together only with `mixed = true` "
-                             "(otherwise a prepared web page could carry notes out)")
+            raise AgentError(tr("Agent {id}: vault tools and web tools together only with `mixed = true` "
+                                "(otherwise a prepared web page could carry notes out)", id=aid))
         model = str(item.get("model", "sonnet")).strip()
         if model and not MODEL_RE.match(model):
-            raise AgentError(f"Agent {aid}: model name '{model}' is invalid")
+            raise AgentError(tr("Agent {id}: model name '{model}' is invalid", id=aid, model=model))
         prompt_rel = str(item.get("prompt", f"agents/{aid}.md"))
         prompt = (base / prompt_rel).resolve()
         if Path(prompt_rel).is_absolute() or not prompt.is_relative_to(base):
-            raise AgentError(f"Agent {aid}: `prompt` must be a path next to agents.toml: '{prompt_rel}'")
+            raise AgentError(tr("Agent {id}: `prompt` must be a path next to agents.toml: '{path}'", id=aid, path=prompt_rel))
         if not prompt.is_file():
-            raise AgentError(f"Agent {aid}: prompt file is missing: {prompt_rel}")
+            raise AgentError(tr("Agent {id}: prompt file is missing: {path}", id=aid, path=prompt_rel))
         out.append(
             Agent(
                 id=aid,
@@ -350,7 +356,7 @@ def recover(cfg: Config, now: datetime | None = None) -> int:
         for j in all_jobs(cfg):
             if j.get("status") == "running" and (j.get("via") == "server" or not _is_active(j, now)):
                 _append(cfg, {**j, "status": "failed", "finished": now.isoformat(timespec="seconds"),
-                              "note": "Aborted: the server or terminal was closed before the job finished"})
+                              "note": tr("Aborted: the server or terminal was closed before the job finished")})
                 n += 1
     return n
 
@@ -358,24 +364,24 @@ def recover(cfg: Config, now: datetime | None = None) -> int:
 # --- run a job -------------------------------------------------------------------------
 def clean_instruction(text) -> str:
     if not isinstance(text, str):
-        raise Refused("Task is missing", 400)
+        raise Refused(tr("Task is missing"), 400)
     text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
     if not text:
-        raise Refused("Task is empty", 400)
+        raise Refused(tr("Task is empty"), 400)
     if len(text) > MAX_INSTRUCTION:
-        raise Refused(f"Task is too long ({len(text)} characters, at most {MAX_INSTRUCTION})", 400)
+        raise Refused(tr("Task is too long ({n} characters, at most {max})", n=len(text), max=MAX_INSTRUCTION), 400)
     if _CONTROL_RE.search(text):
-        raise Refused("Task contains control characters", 400)
+        raise Refused(tr("Task contains control characters"), 400)
     return redact(text)  # an accidentally pasted password reaches neither Claude nor the log
 
 
 def find_claude(vault: Path | None = None) -> tuple[str | None, str]:
     exe = safe_which("claude", (vault,) if vault else ())
     if not exe:
-        return None, "`claude` not found (is Claude Code installed?)"
+        return None, tr("`claude` not found (is Claude Code installed?)")
     if exe.lower().endswith((".cmd", ".bat")):
         # cmd.exe would cut arguments at line breaks and lose the lock-down options
-        return None, f"{exe} is a batch wrapper. Please use the real claude.exe."
+        return None, tr("{path} is a batch wrapper. Please use the real claude.exe.", path=exe)
     return exe, ""
 
 
@@ -419,7 +425,7 @@ def parse_output(out: str) -> tuple[str, str, str, dict]:
     if isinstance(obj, list):  # stream-json-like output: the last "result" object counts
         obj = next((o for o in reversed(obj) if isinstance(o, dict) and o.get("type") == "result"), None)
     if not isinstance(obj, dict) or ("result" not in obj and "total_cost_usd" not in obj):
-        return ("ok", out, "", {}) if out else ("failed", "", "Empty answer", {})
+        return ("ok", out, "", {}) if out else ("failed", "", tr("Empty answer"), {})
     meta: dict = {}
     cost = obj.get("total_cost_usd")
     if isinstance(cost, (int, float)) and not isinstance(cost, bool):
@@ -435,10 +441,10 @@ def parse_output(out: str) -> tuple[str, str, str, dict]:
         meta["turns"] = obj["num_turns"]
     text = str(obj.get("result") or "").strip()
     if obj.get("is_error") or obj.get("subtype") not in (None, "success"):
-        why = text or str(obj.get("subtype") or "Error")
+        why = text or str(obj.get("subtype") or tr("Error"))
         return "failed", "", why[-NOTE_LIMIT:], meta
     if not text:
-        return "failed", "", "Empty answer", meta
+        return "failed", "", tr("Empty answer"), meta
     return "ok", text, "", meta
 
 
@@ -479,14 +485,14 @@ def _run(cfg: Config, agent: Agent, system: str, instruction: str) -> tuple[str,
             start_new_session=_own_session(),  # macOS / Linux: what lets _kill_tree end the whole tree (not inside a routine's own group)
         )
     except OSError as exc:
-        return "failed", "", f"Could not start: {exc}", {}
+        return "failed", "", tr("Could not start: {error}", error=exc), {}
     LIVE.add(proc)
     try:
         out, err = proc.communicate(instruction, timeout=agent.timeout_s)
     except subprocess.TimeoutExpired:
         _kill_tree(proc)
         proc.communicate()
-        return "timeout", "", f"Stopped after {agent.timeout_s} s", {}
+        return "timeout", "", tr("Stopped after {n} s", n=agent.timeout_s), {}
     except KeyboardInterrupt:  # Ctrl+C no longer reaches a process of its own session: stop it here
         _kill_tree(proc)
         raise
@@ -496,7 +502,7 @@ def _run(cfg: Config, agent: Agent, system: str, instruction: str) -> tuple[str,
         note, meta = "", {}
         if (out or "").lstrip().startswith(("{", "[")):  # an error exit often still carries cost and a reason
             _, _, note, meta = parse_output(out)
-        why = note or (err or "").strip() or (out or "").strip() or f"Exit code {proc.returncode}"
+        why = note or (err or "").strip() or (out or "").strip() or tr("Exit code {code}", code=proc.returncode)
         return "failed", "", why[-NOTE_LIMIT:], meta
     return parse_output(out)
 
@@ -547,15 +553,15 @@ def _finish(cfg: Config, agent: Agent, job: dict, runner, prefix: str = "") -> d
         if len(res) > 3 and isinstance(res[3], dict):
             meta = res[3]
     except Exception as exc:  # noqa: BLE001 - the job must be closed in every case
-        status, result, note = "failed", "", f"Internal error: {type(exc).__name__}: {exc}"
+        status, result, note = "failed", "", tr("Internal error: {kind}: {error}", kind=type(exc).__name__, error=exc)
     except KeyboardInterrupt:  # Ctrl+C in `aos agent`: close the job, or the agent counts as busy for up to 16 minutes
         with _LOCK:
             _append(cfg, {**job, "status": "failed", "finished": datetime.now().isoformat(timespec="seconds"),
-                          "duration_s": round(time.monotonic() - t0, 1), "result": "", "note": "Stopped with Ctrl+C"})
+                          "duration_s": round(time.monotonic() - t0, 1), "result": "", "note": tr("Stopped with Ctrl+C")})
         raise
     result = redact(result or "")
     if len(result) > MAX_RESULT:
-        result = result[:MAX_RESULT] + "\n\n[… truncated]"
+        result = result[:MAX_RESULT] + "\n\n" + tr("[… truncated]")
     done = {**job, "status": status, "finished": datetime.now().isoformat(timespec="seconds"),
             "duration_s": round(time.monotonic() - t0, 1), "result": result, "note": redact(note or "")[-NOTE_LIMIT:]}
     done.update({k: v for k, v in meta.items() if k in ("cost_usd", "tokens_in", "tokens_out", "model_used", "turns", "routed", "plan", "why")})
@@ -575,7 +581,7 @@ def route(cfg: Config, instruction, now: datetime | None = None) -> tuple[str, s
     now = now or datetime.now().replace(microsecond=0)
     agents = [a for a in load_agents(cfg.agents_file) if a.enabled]
     if not agents:
-        raise Refused("No agent is enabled (agents.toml)", 409)
+        raise Refused(tr("No agent is enabled (agents.toml)"), 409)
     busy = {j.get("agent") for j in all_jobs(cfg) if _is_active(j, now)}
     scored = []
     for order, a in enumerate(agents):
@@ -587,14 +593,14 @@ def route(cfg: Config, instruction, now: datetime | None = None) -> tuple[str, s
         scored.sort(key=lambda s: (s[2].id == default, s[1]), reverse=True)
     free = [s for s in scored if s[2].id not in busy]
     if not free:
-        raise Refused("All agents are still working, please wait a moment", 409)
+        raise Refused(tr("All agents are still working, please wait a moment"), 409)
     hits, _, agent, words = free[0]
     if hits:
-        why = "keywords: " + ", ".join(words[:4])
+        why = tr("keywords: {words}", words=", ".join(words[:4]))
     else:
-        why = "no keyword matched, default agent"
+        why = tr("no keyword matched, default agent")
     if free[0] is not scored[0]:
-        why += f" ({scored[0][2].name} is busy right now)"
+        why += " " + tr("({name} is busy right now)", name=scored[0][2].name)
     return agent.id, why
 
 
@@ -619,7 +625,7 @@ def _enqueue(cfg: Config, agent: Agent, instruction, *, via: str, wait: bool, ru
     """Shared path for agents and skills: check, write to the log, run (in a thread or waiting)."""
     text = clean_instruction(instruction)
     if thread is not None and not (isinstance(thread, str) and JOB_ID_RE.match(thread)):
-        raise Refused("Conversation id is invalid", 400)
+        raise Refused(tr("Conversation id is invalid"), 400)
     now = now or datetime.now().replace(microsecond=0)
     jid = job_id or secrets.token_hex(6)
     job = {"id": jid, "agent": agent.id, "instruction": text, "status": "running", "thread": thread or jid,
@@ -632,13 +638,13 @@ def _enqueue(cfg: Config, agent: Agent, instruction, *, via: str, wait: bool, ru
         active = [j for j in jobs if _is_active(j, now)]
         reason = None
         if not agent.enabled:
-            reason = Refused("Agent is disabled (enabled = false in agents.toml)", 403)
+            reason = Refused(tr("Agent is disabled (enabled = false in agents.toml)"), 403)
         elif any(j.get("agent") == agent.id for j in active):
-            reason = Refused("This agent is still working on a task", 409)
+            reason = Refused(tr("This agent is still working on a task"), 409)
         elif sum(1 for j in active if j.get("agent") != ATLAS_ID) >= MAX_PARALLEL:  # Atlas itself only waits, it does not count
-            reason = Refused(f"Already {MAX_PARALLEL} tasks in progress, please wait", 409)
+            reason = Refused(tr("Already {n} tasks in progress, please wait", n=MAX_PARALLEL), 409)
         elif _runs_today(jobs, agent.id, now) >= agent.max_runs_per_day:
-            reason = Refused(f"Daily cap of {agent.max_runs_per_day} reached for this agent", 429)
+            reason = Refused(tr("Daily cap of {n} reached for this agent", n=agent.max_runs_per_day), 429)
         else:
             over = daily_cap_reached(cfg, now)
             reason = Refused(over, 429) if over else None
@@ -666,9 +672,9 @@ def _override(agent: Agent, model, effort) -> tuple[Agent, dict]:
     model = "" if model is None else str(model).strip().lower()
     effort = "" if effort is None else str(effort).strip().lower()
     if model and model not in S.MODELS:
-        raise Refused(f"Model '{model}' is not allowed. Allowed: {', '.join(S.MODELS)}", 400)
+        raise Refused(tr("Model '{model}' is not allowed. Allowed: {allowed}", model=model, allowed=", ".join(S.MODELS)), 400)
     if effort and effort not in S.EFFORTS:
-        raise Refused(f"Effort '{effort}' is not allowed. Allowed: {', '.join(S.EFFORTS)}", 400)
+        raise Refused(tr("Effort '{effort}' is not allowed. Allowed: {allowed}", effort=effort, allowed=", ".join(S.EFFORTS)), 400)
     if model:
         agent = replace(agent, model=model)
         extra["model"] = model
@@ -687,7 +693,7 @@ def submit(cfg: Config, agent_id: str, instruction, *, via: str = "server", wait
     `thread` = id of the first job of a conversation: follow-up questions get the history so far as context."""
     agent = next((a for a in load_agents(cfg.agents_file) if a.id == agent_id), None)
     if agent is None:
-        raise KeyError(f"Unknown agent: {agent_id}")
+        raise KeyError(tr("Unknown agent: {id}", id=agent_id))
     agent, extra = _override(agent, model, effort)
     if parent:
         extra["parent"] = parent  # Atlas sub-job: belongs to Atlas' job, not to a conversation of its own
@@ -814,7 +820,7 @@ def orchestrate(cfg: Config, jid: str, instruction: str, *, runner=None, now: da
         not vault_free(j, web_ids) for j in _turns(jobs, thread, jid)[-THREAD_TURNS:])
     free = [a for a in agents if a.id not in busy]
     if not free:
-        return "failed", "", "All agents are still working, please wait a moment", {}
+        return "failed", "", tr("All agents are still working, please wait a moment"), {}
     names = {a.id: a.name for a in agents}
     valid = {a.id for a in free}
     call = runner or execute  # the same runner for plan, review and specialists (tests set `runner`)
@@ -840,10 +846,10 @@ def orchestrate(cfg: Config, jid: str, instruction: str, *, runner=None, now: da
         if job is not None:
             text = job["result"] or job["note"]
             if job["status"] == "ok" and text.strip() and not text.lstrip().startswith(OUT_OF_SCOPE):
-                meta.update(plan=[prefer], routed=names.get(prefer, prefer), why="Chosen directly: no plan, no review")
+                meta.update(plan=[prefer], routed=names.get(prefer, prefer), why=tr("Chosen directly: no plan, no review"))
                 return "ok", text, "", meta
             if job["status"] != "ok":
-                return "failed", "", job["note"] or "No answer", meta
+                return "failed", "", job["note"] or tr("No answer"), meta
         hint = f"\n\n[Note: {user} marked the specialist \"{prefer}\" (it declined or was not reachable). Choose the one that fits.]"
         if job is None:
             hint = f"\n\n[Note: {user} marked the specialist \"{prefer}\". Use it if its field fits.]"
@@ -887,8 +893,8 @@ def orchestrate(cfg: Config, jid: str, instruction: str, *, runner=None, now: da
                 task = question[: MAX_INSTRUCTION - 600]
             out.append((aid, task))
         if plain:
-            whys.append("vault results are not passed to web agents; " + ", ".join(names.get(a, a) for a in plain)
-                        + " got the original question")
+            whys.append(tr("vault results are not passed to web agents; {names} got the original question",
+                           names=", ".join(names.get(a, a) for a in plain)))
         return out
 
     tasks = relay(tasks, tainted)
@@ -914,7 +920,7 @@ def orchestrate(cfg: Config, jid: str, instruction: str, *, runner=None, now: da
             return aid, "failed", str(exc)
         text = job["result"] or job["note"]
         if job["status"] == "ok" and text.lstrip().startswith(OUT_OF_SCOPE):  # the agent itself says: not my field
-            return aid, "declined", text.lstrip()[len(OUT_OF_SCOPE):].strip() or "not its field"
+            return aid, "declined", text.lstrip()[len(OUT_OF_SCOPE):].strip() or tr("not its field")
         return aid, job["status"], text
 
     results: list[tuple[str, str, str]] = []
@@ -964,7 +970,7 @@ def orchestrate(cfg: Config, jid: str, instruction: str, *, runner=None, now: da
     good = [(a, t) for a, st, t in results if st == "ok" and t]
     if not good:  # not a single usable report: Atlas must not invent anything, the job counts as failed
         bad = [f"{names.get(a, a)}: {t[:120]}" for a, _, t in results]
-        return "failed", "", ("; ".join(bad) or "No answer")[-NOTE_LIMIT:], meta
+        return "failed", "", ("; ".join(bad) or tr("No answer"))[-NOTE_LIMIT:], meta
     if not answer:  # review failed: the raw reports are better than nothing
         answer = "\n\n".join(f"### {names.get(a, a)}\n{t}" for a, t in good)
     return "ok", answer, "", meta
@@ -1003,13 +1009,13 @@ def submit_skill(cfg: Config, skill_id: str, instruction, *, model: str | None =
     """Start a skill. Unknown skill: KeyError. Model/effort outside the fixed lists: Refused (400)."""
     skill = S.get(cfg, skill_id) if isinstance(skill_id, str) else None
     if skill is None:
-        raise KeyError(f"Unknown skill: {skill_id}")
+        raise KeyError(tr("Unknown skill: {id}", id=skill_id))
     model = str(model or skill.model).strip().lower()
     effort = skill.effort if effort is None else str(effort).strip().lower()
     if model not in S.MODELS:
-        raise Refused(f"Model '{model}' is not allowed. Allowed: {', '.join(S.MODELS)}", 400)
+        raise Refused(tr("Model '{model}' is not allowed. Allowed: {allowed}", model=model, allowed=", ".join(S.MODELS)), 400)
     if effort and effort not in S.EFFORTS:
-        raise Refused(f"Effort '{effort}' is not allowed. Allowed: {', '.join(S.EFFORTS)}", 400)
+        raise Refused(tr("Effort '{effort}' is not allowed. Allowed: {allowed}", effort=effort, allowed=", ".join(S.EFFORTS)), 400)
     agent = skill_agent(cfg, skill, model, effort)
     extra = {"skill": skill.id, "model": model, "effort": effort}
     return _enqueue(cfg, agent, instruction, via=via, wait=wait, runner=runner, now=now, extra=extra)
@@ -1051,8 +1057,8 @@ def daily_cap_reached(cfg: Config, now: datetime | None = None) -> str | None:
     cap = daily_cap()
     today = spend(cfg, now)["today_usd"]
     if today >= cap:
-        return (f"Daily spending ceiling reached: ${today:.2f} of ${cap:.2f} today. New runs start again tomorrow "
-                "(raise it with the environment variable AOS_DAILY_USD_CAP).")
+        return tr("Daily spending ceiling reached: {spent} of {cap} today. New runs start again tomorrow "
+                  "(raise it with the environment variable AOS_DAILY_USD_CAP).", spent=f"${today:.2f}", cap=f"${cap:.2f}")
     return None
 
 

@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.helpers import JS_I18N
+
 ROOT = Path(__file__).resolve().parent.parent
 HTML = (ROOT / "aos" / "web" / "dashboard.html").read_text(encoding="utf-8")
 JS = re.search(r"<script>\n(.*?)</script>", HTML, re.S).group(1)
@@ -136,7 +138,7 @@ class AtlasPureFunctionTests(unittest.TestCase):
         funcs = v[v.index("// Fields: filtered"): v.index("// Soft glow")]
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "t.js"
-            f.write_text(head + funcs + "\n" + body, encoding="utf-8")
+            f.write_text(JS_I18N + head + funcs + "\n" + body, encoding="utf-8")
             r = subprocess.run(["node", str(f)], capture_output=True, text=True, timeout=30)
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)
@@ -147,7 +149,7 @@ class AtlasPureFunctionTests(unittest.TestCase):
         pre = "const TAU = Math.PI * 2;\nconst clamp = (v, a, b) => Math.max(a, Math.min(b, v));\nconst HOME_PALETTE = ['#1', '#2', '#3', '#4', '#5', '#6'];"
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "t.js"
-            f.write_text("\n".join([pre, JS[a:b], body]), encoding="utf-8")
+            f.write_text("\n".join([JS_I18N, pre, JS[a:b], body]), encoding="utf-8")
             r = subprocess.run(["node", str(f)], capture_output=True, text=True, timeout=30)
         self.assertEqual(r.returncode, 0, r.stderr)
         return json.loads(r.stdout)

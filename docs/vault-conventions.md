@@ -67,8 +67,9 @@ It understands exactly three forms:
 
 - `2026-11-10` (ISO, `YYYY-MM-DD`)
 - `10.11.2026` (`DD.MM.YYYY`)
-- a weekday followed by day.month: `Tue 6.10.`, `Tuesday 6.10.`. The weekday must match the date, which also decides the
-  year. English names and abbreviations are accepted, and so are the German abbreviations `Mo Di Mi Do Fr Sa So`.
+- a weekday followed by day.month: `Tue 6.10.`, `Tuesday 6.10.`, `Dienstag, 6.10.`. The weekday must match the date,
+  which also decides the year. English and German names and abbreviations are accepted (`Mo Di Mi Do Fr Sa So`,
+  `Montag` … `Sonntag`), with an optional comma after the weekday.
 
 Anything else is not a date to the digest: month names (`10 November`, `Nov 10`), US order (`11/10/2026`) and a bare
 `6.10.` without a weekday are not parsed.
@@ -179,5 +180,13 @@ week_template = "Resources/Templates/woche"
 schedule_keyword = "zeitplan"
 ```
 
-The generated text (digest, vault check) stays English; only the parts that have to match your notes follow the
-conventions. Set `[user] language` to have the agents reply in your language.
+The conventions only cover what has to match your notes. The language of the generated text (digest, vault check,
+terminal, dashboard) is a separate setting, `[user] ui_language = "de"`, which also makes the agents reply in German;
+see [languages.md](languages.md). The file names in the digest folder can follow your vault too:
+
+```toml
+[digest]
+file = "aktuell.md"            # instead of latest.md
+archive = "archiv"             # instead of archive/
+review = "wochenrueckblick.md" # instead of weekly-review.md
+```

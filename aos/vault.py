@@ -12,7 +12,15 @@ import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .i18n import tr
+
 NOTE_EXTS = {".md": "md", ".base": "base", ".canvas": "canvas"}
+
+
+
+class VaultNotFound(FileNotFoundError):
+    """The configured vault folder does not exist: a setup problem the server shows as it is (no "internal error")."""
+
 
 MAX_NOTE_BYTES = 2_000_000  # larger files are only read up to here
 MAX_LINE_CHARS = 2000  # longer lines are not run through regexes (guards against pathologically slow patterns)
@@ -238,10 +246,8 @@ class Vault:
     def scan(cls, root: Path, ignore: tuple[str, ...] = ()) -> "Vault":
         v = cls(root, ignore)
         if not v.root.is_dir():
-            raise FileNotFoundError(
-                f"Vault not found: {v.root}. Set [vault] path in aos.toml (or AOS_VAULT), "
-                "or create a starter vault with `python -m aos init <folder>`."
-            )
+            raise VaultNotFound(tr("Vault not found: {path}. Set [vault] path in aos.toml (or AOS_VAULT), "
+                                   "or create a starter vault with `python -m aos init <folder>`.", path=v.root))
         for dirpath, dirnames, filenames in os.walk(v.root):
             # Links (symlinks, Windows junctions) are not followed: otherwise a folder in the vault
             # could point anywhere on the disk or form a loop.

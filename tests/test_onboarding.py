@@ -35,7 +35,7 @@ class StageDataTests(unittest.TestCase):
         doc = DOC.read_text(encoding="utf-8")
         cfg = load_config(PROJECT_ROOT / "does-not-exist.toml")
         for s in O.STAGES:
-            self.assertIn(O.GUARDRAILS, s.prompt, s.id)
+            self.assertIn(O.GUARDRAILS, O.prompt_for(s, cfg), s.id)
             self.assertIn(s.prompt, doc, s.id)
             self.assertIn(O.prompt_for(s, cfg), doc, s.id)  # the doc shows the prompt as `aos next` prints it with defaults
             self.assertIn(s.title, doc, s.id)

@@ -7,7 +7,7 @@ Starlane is a small operating layer around two things you already have: a folder
 - **The vault is the truth.** Everything generated lands in `AI/Digest/` (inside the vault) or `data/` (inside the project). The system never changes or deletes a note of yours.
 - **Show, don't store.** The dashboard reads files and renders them; it keeps no database of its own.
 - **Read-only by construction.** Routines name commands from a whitelist, agents and skills get read and search tools only, the server listens on `127.0.0.1` only. Every routine and every agent run has time, daily and failure limits. See [security.md](security.md).
-- **Configurable, not personal.** User name, reply language and every vault convention (folder names, frontmatter keys, status words) come from `aos.toml`. See [vault-conventions.md](vault-conventions.md).
+- **Configurable, not personal.** User name, interface and reply language and every vault convention (folder names, frontmatter keys, status words) come from `aos.toml`. See [vault-conventions.md](vault-conventions.md) and [languages.md](languages.md).
 - **Honest limits.** Where a protection has a ceiling, the code and the docs say so.
 
 ## The four layers (MAPS)
@@ -25,6 +25,7 @@ A fifth concern, **skills**, sits across Agent and Pulse: a skill is a recipe (`
 |---|---|
 | `aos/config.py` | Loads `aos.toml` (or `AOS_CONFIG`), resolves paths, holds `Config` and `Conventions`. Decides between *checkout* (the project folder is the code folder) and *installed* (a wheel: the user's folder `$AOS_HOME`, default `~/starlane`, is the project root). |
 | `aos/shipped.py` | The list of starter files (`aos.toml`, routines, agents, skills, docs, the demo vault) with what never ships. `aos setup` copies them, never overwriting; `setup.py` bundles the same list into the wheel as `aos/_shipped`, and `MANIFEST.in` mirrors it for the sdist. |
+| `aos/i18n.py` | The interface language: `tr`, `trc` (with a context), `trn` (singular/plural) and `tr_mark` look English source texts up in `aos/locales/<code>.json` and fall back to English. The CLI switches the process language once from `[user] ui_language`; `dashboard.render_html` embeds the locale's `web` section for the page. See [languages.md](languages.md). |
 | `aos/vault.py` | Walks the vault, parses frontmatter and wikilinks, builds the link index. Never writes. |
 | `aos/dates.py` | Date parsing (ISO, `DD.MM.YYYY`, weekday forms) and ISO week names. |
 | `aos/mapcheck.py` | The vault check: broken links, reachability, frontmatter rules, large files, secret patterns; also `redact()`, used everywhere text leaves the system. |
@@ -68,6 +69,7 @@ A fifth concern, **skills**, sits across Agent and Pulse: a skill is a recipe (`
 - **Descriptions follow one pattern** ("what it delivers; vault or web. For: ... Not for: ... (→ neighbour)"), because Atlas sees nothing else when it routes. See [agents.md](agents.md).
 - **`Read(./**)` instead of bare `Grep`/`Glob` permissions**, because the bare forms allowed searching the whole file system.
 - **Liquid glass in plain CSS, one SVG filter and one WebGL2 pass, not a library.** The reference implementations are either a native iOS view or need a CDN script and one WebGL context per piece; the dashboard is one file that is served under `default-src 'none'`. Small controls get refraction from a displacement map used as a backdrop filter, with a measured budget; the large widgets of the home page are drawn by one WebGL2 pass (one context for all panes) and fall back to frost. Both degrade through three steps to flat. Details and numbers: [design.md](design.md).
+- **English source texts as catalog keys, one JSON file per language, no gettext.** The code stays readable in English, a missing entry falls back to English instead of breaking, and the tests extract every marked text from the Python sources (AST) and the dashboard (regex) to hold each locale to it: nothing missing, nothing stale, placeholders and code spans unchanged. Interface language and vault conventions are separate settings, because the language of the notes is not the language of the person reading the dashboard.
 - **Not built, on purpose:** always-on external agent services (need their own server and broader rights), calendar and e-mail widgets (need connectors, which are deliberately locked), skills with write access (against the read-only principle).
 
 ## Definition of done for a change

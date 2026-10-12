@@ -27,10 +27,11 @@ from pathlib import Path
 from . import agents as A
 from . import skills as S
 from .config import Config
+from .i18n import tr, tr_mark
 from .mapcheck import redact
 from .scheduler import Busy, TickLock, atomic_write
 
-CUSTOM_GROUP = "Custom"
+CUSTOM_GROUP = tr_mark("Custom")  # stored in English, shown translated (tr(group))
 ACCESS = {"vault": A.VAULT_TOOLS, "web": A.WEB_TOOLS}
 MAX_CUSTOM = 40
 NAME_MAX = 40
@@ -55,7 +56,8 @@ HEADER = """\
 # The shipped agents live in agents.toml and are never changed.
 """
 
-TEMPLATE = """## Identity
+# printed by `aos agent-new --template` in the interface language: tr(TEMPLATE)
+TEMPLATE = tr_mark("""## Identity
 You are <role in one sentence: who you are and what you are responsible for>.
 
 ## Working method
@@ -65,7 +67,7 @@ You are <role in one sentence: who you are and what you are responsible for>.
 ## Boundaries
 - <What do you explicitly not do?>
 - <When do you ask back, when do you work with assumptions?>
-"""
+""")
 
 
 @dataclass(frozen=True)
@@ -108,7 +110,7 @@ def _locked(cfg: Config):
                 break
             except Busy:
                 if time.monotonic() > deadline:
-                    raise A.Refused("Custom agents are being changed elsewhere right now. Try again in a moment.", 409) from None
+                    raise A.Refused(tr("Custom agents are being changed elsewhere right now. Try again in a moment."), 409) from None
                 time.sleep(0.1)
         try:
             yield
@@ -127,19 +129,21 @@ def _utf8(text: str, label: str) -> None:
     try:
         text.encode("utf-8")
     except UnicodeEncodeError:
-        raise A.Refused(f"{label} contains invalid characters", 400) from None
+        raise A.Refused(tr("{label} contains invalid characters", label=tr(label)), 400) from None
 
 
+# The `label` arguments are English field names marked with tr_mark; the messages translate them.
 def _one_line(value, label: str, lo: int, hi: int) -> str:
     if not isinstance(value, str):
-        raise A.Refused(f"{label} is missing", 400)
+        raise A.Refused(tr("{label} is missing", label=tr(label)), 400)
     text = re.sub(r"\s+", " ", value).strip()
     if _CONTROL.search(text):
-        raise A.Refused(f"{label} contains control characters", 400)
+        raise A.Refused(tr("{label} contains control characters", label=tr(label)), 400)
     if len(text) < lo:
-        raise A.Refused(f"{label} is too short (at least {lo} characters)" if lo > 1 else f"{label} is missing", 400)
+        raise A.Refused(tr("{label} is too short (at least {n} characters)", label=tr(label), n=lo) if lo > 1
+                        else tr("{label} is missing", label=tr(label)), 400)
     if len(text) > hi:
-        raise A.Refused(f"{label} is too long ({len(text)} characters, at most {hi})", 400)
+        raise A.Refused(tr("{label} is too long ({n} characters, at most {max})", label=tr(label), n=len(text), max=hi), 400)
     _utf8(text, label)
     return text
 
@@ -152,15 +156,15 @@ def _list(value, label: str, split: str) -> list[str]:
     elif isinstance(value, tuple):
         value = list(value)
     if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
-        raise A.Refused(f"{label} must be a list of strings", 400)
+        raise A.Refused(tr("{label} must be a list of strings", label=tr(label)), 400)
     return [re.sub(r"\s+", " ", v).strip() for v in value if v.strip()]
 
 
 def _bounded(value, label: str, lo: int, hi: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise A.Refused(f"{label} must be an integer", 400)
+        raise A.Refused(tr("{label} must be an integer", label=tr(label)), 400)
     if not lo <= value <= hi:
-        raise A.Refused(f"{label} must be between {lo} and {hi}", 400)
+        raise A.Refused(tr("{label} must be between {lo} and {hi}", label=tr(label), lo=lo, hi=hi), 400)
     return value
 
 
@@ -168,57 +172,57 @@ def parse_spec(raw: dict, *, base: Spec | None = None) -> Spec:
     """Check and clean the fields. With `base` (update), missing fields keep their previous value.
     Violations are `Refused` with code 400 and a message that can be shown to the person as is."""
     if not isinstance(raw, dict):
-        raise A.Refused("Agent details are missing", 400)
+        raise A.Refused(tr("Agent details are missing"), 400)
 
     def pick(key, default):
         return raw[key] if key in raw else (getattr(base, key) if base else default)
 
-    name = _one_line(pick("name", None), "Name", 1, NAME_MAX)
-    description = _one_line(pick("description", None), "Description", DESC_MIN, DESC_MAX)
+    name = _one_line(pick("name", None), tr_mark("Name"), 1, NAME_MAX)
+    description = _one_line(pick("description", None), tr_mark("Description"), DESC_MIN, DESC_MAX)
     instructions = pick("instructions", None)
     if not isinstance(instructions, str):
-        raise A.Refused("Instructions are missing", 400)
+        raise A.Refused(tr("Instructions are missing"), 400)
     instructions = instructions.replace("\r\n", "\n").replace("\r", "\n").strip()
     if len(instructions) < INSTR_MIN:
-        raise A.Refused(f"Instructions are too short (at least {INSTR_MIN} characters): describe role, working method and boundaries", 400)
+        raise A.Refused(tr("Instructions are too short (at least {n} characters): describe role, working method and boundaries", n=INSTR_MIN), 400)
     if len(instructions) > INSTR_MAX:
-        raise A.Refused(f"Instructions are too long ({len(instructions)} characters, at most {INSTR_MAX})", 400)
+        raise A.Refused(tr("Instructions are too long ({n} characters, at most {max})", n=len(instructions), max=INSTR_MAX), 400)
     if _CONTROL.search(instructions):
-        raise A.Refused("Instructions contain control characters", 400)
-    _utf8(instructions, "Instructions")
+        raise A.Refused(tr("Instructions contain control characters"), 400)
+    _utf8(instructions, tr_mark("Instructions"))
     if redact(instructions) != instructions:
-        raise A.Refused("The instructions look like they contain a password or key. That does not belong in a prompt.", 400)
+        raise A.Refused(tr("The instructions look like they contain a password or key. That does not belong in a prompt."), 400)
     access = str(pick("access", "vault")).strip().lower()
     if access not in ACCESS:
-        raise A.Refused("Access must be 'vault' (read notes) or 'web' (web search), not both", 400)
+        raise A.Refused(tr("Access must be 'vault' (read notes) or 'web' (web search), not both"), 400)
     group = pick("group", CUSTOM_GROUP)
-    group = _one_line(group, "Group", 1, GROUP_MAX) if str(group or "").strip() else CUSTOM_GROUP
+    group = _one_line(group, tr_mark("Group"), 1, GROUP_MAX) if str(group or "").strip() else CUSTOM_GROUP
     model = str(pick("model", S.DEFAULT_MODEL)).strip().lower()
     if model not in S.MODELS:
-        raise A.Refused(f"Model '{model}' is not allowed. Allowed: {', '.join(S.MODELS)}", 400)
+        raise A.Refused(tr("Model '{model}' is not allowed. Allowed: {allowed}", model=model, allowed=", ".join(S.MODELS)), 400)
     keywords: list[str] = []
-    for k in _list(pick("keywords", []), "Keywords", r"[,\n]"):
+    for k in _list(pick("keywords", []), tr_mark("Keywords"), r"[,\n]"):
         k = k.lower()
         if len(k) < 2 or len(k) > KEYWORD_MAX or _CONTROL.search(k):
-            raise A.Refused(f"Keyword '{k[:KEYWORD_MAX]}' is invalid (2 to {KEYWORD_MAX} characters)", 400)
-        _utf8(k, "Keyword")
+            raise A.Refused(tr("Keyword '{keyword}' is invalid (2 to {max} characters)", keyword=k[:KEYWORD_MAX], max=KEYWORD_MAX), 400)
+        _utf8(k, tr_mark("Keyword"))
         if k not in keywords:
             keywords.append(k)
     if len(keywords) > KEYWORDS_MAX:
-        raise A.Refused(f"At most {KEYWORDS_MAX} keywords", 400)
-    examples = _list(pick("examples", []), "Examples", r"\n")
+        raise A.Refused(tr("At most {n} keywords", n=KEYWORDS_MAX), 400)
+    examples = _list(pick("examples", []), tr_mark("Examples"), r"\n")
     if len(examples) > A.MAX_EXAMPLES:
-        raise A.Refused(f"At most {A.MAX_EXAMPLES} examples", 400)
+        raise A.Refused(tr("At most {n} examples", n=A.MAX_EXAMPLES), 400)
     for e in examples:
         if len(e) > A.MAX_EXAMPLE_CHARS or _CONTROL.search(e):
-            raise A.Refused(f"An example is too long (at most {A.MAX_EXAMPLE_CHARS} characters)", 400)
-        _utf8(e, "Example")
+            raise A.Refused(tr("An example is too long (at most {n} characters)", n=A.MAX_EXAMPLE_CHARS), 400)
+        _utf8(e, tr_mark("Example"))
     timeout_default = 480 if access == "web" else A.DEFAULT_TIMEOUT_S
-    timeout_s = _bounded(pick("timeout_s", timeout_default), "Time limit", TIMEOUT_MIN, A.MAX_TIMEOUT_S)
-    cap = _bounded(pick("max_runs_per_day", 20), "Daily cap", 1, CAP_MAX)
+    timeout_s = _bounded(pick("timeout_s", timeout_default), tr_mark("Time limit"), TIMEOUT_MIN, A.MAX_TIMEOUT_S)
+    cap = _bounded(pick("max_runs_per_day", 20), tr_mark("Daily cap"), 1, CAP_MAX)
     enabled = pick("enabled", True)
     if not isinstance(enabled, bool):
-        raise A.Refused("`enabled` must be true or false", 400)
+        raise A.Refused(tr("`enabled` must be true or false"), 400)
     return Spec(name, description, instructions, access, group, model, tuple(keywords), tuple(examples), timeout_s, cap, enabled)
 
 
@@ -252,7 +256,7 @@ def _read_entries(cfg: Config) -> list[dict]:
         with path.open("rb") as fh:
             raw = tomllib.load(fh)
     except tomllib.TOMLDecodeError as exc:
-        raise A.AgentError(f"{path.name} is not valid TOML: {exc}") from exc
+        raise A.AgentError(tr("{file} is not valid TOML: {error}", file=path.name, error=exc)) from exc
     return [dict(e) for e in raw.get("agent", []) if isinstance(e, dict)]
 
 
@@ -277,7 +281,7 @@ def _entry_for(agent_id: str, spec: Spec, existing: dict | None = None) -> dict:
 def _prompt_path(cfg: Config, agent_id: str) -> Path:
     p = (prompt_dir(cfg) / f"{agent_id}.md").resolve()
     if not p.is_relative_to(prompt_dir(cfg)):  # ID_RE already prevents this; a second lock here
-        raise A.Refused("Invalid agent id", 400)
+        raise A.Refused(tr("Invalid agent id"), 400)
     return p
 
 
@@ -334,8 +338,8 @@ def _spec_of(cfg: Config, e: dict) -> Spec:
 def _not_custom(cfg: Config, agent_id: str):
     """Not a custom agent: either shipped (Refused 403) or unknown (KeyError)."""
     if any(a.id == agent_id for a in A.load_agents(cfg.agents_file)):
-        raise A.Refused("Only custom agents can be changed or deleted. Shipped agents live in agents.toml.", 403)
-    raise KeyError(f"Unknown agent: {agent_id}")
+        raise A.Refused(tr("Only custom agents can be changed or deleted. Shipped agents live in agents.toml."), 403)
+    raise KeyError(tr("Unknown agent: {id}", id=agent_id))
 
 
 def _commit(cfg: Config, entries: list[dict], agent_id: str, prompt_text: str | None) -> None:
@@ -369,13 +373,13 @@ def create(cfg: Config, raw: dict, agent_id: str | None = None) -> A.Agent:
     with _locked(cfg):
         entries = _read_entries(cfg)
         if len(entries) >= MAX_CUSTOM:
-            raise A.Refused(f"At most {MAX_CUSTOM} custom agents. Delete one before you create a new one.", 409)
+            raise A.Refused(tr("At most {n} custom agents. Delete one before you create a new one.", n=MAX_CUSTOM), 409)
         if agent_id:
             if (not A.ID_RE.match(agent_id) or agent_id.startswith(("skill-", "atlas-")) or agent_id == A.ATLAS_ID
                     or A.RESERVED_IDS.match(agent_id)):
-                raise A.Refused(f"Agent id '{agent_id}' is invalid or reserved (a-z, 0-9, hyphen)", 400)
+                raise A.Refused(tr("Agent id '{id}' is invalid or reserved (a-z, 0-9, hyphen)", id=agent_id), 400)
             if agent_id in _all_ids(cfg):
-                raise A.Refused(f"Agent id '{agent_id}' is already taken", 409)
+                raise A.Refused(tr("Agent id '{id}' is already taken", id=agent_id), 409)
             aid = agent_id
         else:
             aid = _unique_id(cfg, slugify(spec.name))
@@ -406,7 +410,7 @@ def delete(cfg: Config, agent_id: str) -> None:
         if not any(e.get("id") == agent_id for e in entries):
             _not_custom(cfg, agent_id)
         if _busy(cfg, agent_id):
-            raise A.Refused("This agent is working on a task right now. Try again afterwards.", 409)
+            raise A.Refused(tr("This agent is working on a task right now. Try again afterwards."), 409)
         _write_entries(cfg, [e for e in entries if e.get("id") != agent_id])
         try:
             _prompt_path(cfg, agent_id).unlink(missing_ok=True)

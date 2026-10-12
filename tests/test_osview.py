@@ -8,6 +8,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.helpers import JS_I18N
+
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "aos" / "web" / "dashboard.html"
 
@@ -23,7 +25,7 @@ def _os_block(js: str) -> str:
 class OsViewStaticTests(unittest.TestCase):
     def test_view_is_registered_everywhere(self):
         js = _script()
-        self.assertIn("{ id: 'os', label: 'Second brain' }", js)
+        self.assertIn("{ id: 'os', label: tr('Second brain') }", js)
         self.assertRegex(re.search(r"const VIEW_MODS = \{(.*?)\};", js, re.S).group(1), r"\bos: OsView\b")
         self.assertRegex(re.search(r"const TAB_ICONS = \{(.*?)\n\};", js, re.S).group(1), r"\bos:")
 
@@ -110,7 +112,7 @@ const VIEWS = [{ id: 'today', label: 'Today' }, { id: 'os', label: 'Second brain
 const AREAS_SEEN = {};
 const area = k => (AREAS_SEEN[k] = AREAS_SEEN[k] || { key: k, label: k });
 """
-        src = prelude + _os_block(_script()) + "\n" + body
+        src = JS_I18N + prelude + _os_block(_script()) + "\n" + body
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "t.js"
             f.write_text(src, encoding="utf-8")

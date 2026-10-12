@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from .i18n import tr
+
 # command name -> arguments for `python -m aos ...`
 ALLOWED_COMMANDS: dict[str, list[str]] = {
     "digest": ["digest"],
@@ -57,11 +59,11 @@ class Schedule:
         if m:
             n = int(m.group(1))
             if n <= 0:
-                raise RoutineError(f"Interval must be greater than 0: '{text}'")
+                raise RoutineError(tr("Interval must be greater than 0: '{text}'", text=text))
             unit = {"s": "seconds", "m": "minutes", "h": "hours"}[m.group(2)]
             interval = timedelta(**{unit: n})
             if interval < timedelta(minutes=1):
-                raise RoutineError(f"The smallest interval is 1 minute: '{text}'")
+                raise RoutineError(tr("The smallest interval is 1 minute: '{text}'", text=text))
             return cls("every", interval=interval)
         m = re.fullmatch(r"daily\s+(\d{1,2}):(\d{2})", t)
         if m:
@@ -71,10 +73,10 @@ class Schedule:
             days = []
             for name in filter(None, re.split(r"[,\s]+", m.group(1).strip())):
                 if name not in _WEEKDAY_NAMES:
-                    raise RoutineError(f"Unknown weekday '{name}' in '{text}'")
+                    raise RoutineError(tr("Unknown weekday '{name}' in '{text}'", name=name, text=text))
                 days.append(_WEEKDAY_NAMES[name])
             return cls("weekly", hour=_hour(m.group(2), text), minute=_minute(m.group(3), text), weekdays=tuple(sorted(set(days))))
-        raise RoutineError(f"Unknown schedule '{text}'. Allowed: 'every 5m', 'daily 06:30', 'weekly mon,thu 08:00'")
+        raise RoutineError(tr("Unknown schedule '{text}'. Allowed: 'every 5m', 'daily 06:30', 'weekly mon,thu 08:00'", text=text))
 
     def _slot_on(self, day: datetime) -> datetime:
         return day.replace(hour=self.hour, minute=self.minute, second=0, microsecond=0)
@@ -127,21 +129,21 @@ class Schedule:
 def _int(item: dict, key: str, default: int, rid: str) -> int:
     value = item.get(key, default)
     if isinstance(value, bool) or not isinstance(value, int):
-        raise RoutineError(f"Routine {rid}: `{key}` must be an integer, not {value!r}")
+        raise RoutineError(tr("Routine {id}: `{key}` must be an integer, not {value}", id=rid, key=key, value=repr(value)))
     return value
 
 
 def _hour(v: str, text: str) -> int:
     h = int(v)
     if not 0 <= h <= 23:
-        raise RoutineError(f"Hour outside 0-23 in '{text}'")
+        raise RoutineError(tr("Hour outside 0-23 in '{text}'", text=text))
     return h
 
 
 def _minute(v: str, text: str) -> int:
     m = int(v)
     if not 0 <= m <= 59:
-        raise RoutineError(f"Minute outside 0-59 in '{text}'")
+        raise RoutineError(tr("Minute outside 0-59 in '{text}'", text=text))
     return m
 
 
@@ -180,24 +182,25 @@ class Routine:
 
 def load_routines(path: Path) -> list[Routine]:
     if not Path(path).is_file():
-        raise RoutineError(f"routines.toml not found: {path}")
+        raise RoutineError(tr("routines.toml not found: {path}", path=path))
     with Path(path).open("rb") as fh:
         try:
             raw = tomllib.load(fh)
         except tomllib.TOMLDecodeError as exc:
-            raise RoutineError(f"routines.toml is not valid TOML: {exc}") from exc
+            raise RoutineError(tr("{file} is not valid TOML: {error}", file="routines.toml", error=exc)) from exc
     out: list[Routine] = []
     seen: set[str] = set()
     for i, item in enumerate(raw.get("routine", []), start=1):
         rid = str(item.get("id", "")).strip()
         if not re.fullmatch(r"[a-z0-9][a-z0-9\-]{0,40}", rid):
-            raise RoutineError(f"Routine {i}: `id` missing or invalid (only a-z, 0-9, hyphen): '{rid}'")
+            raise RoutineError(tr("Routine {n}: `id` missing or invalid (only a-z, 0-9, hyphen): '{id}'", n=i, id=rid))
         if rid in seen:
-            raise RoutineError(f"Duplicate routine id: {rid}")
+            raise RoutineError(tr("Duplicate routine id: {id}", id=rid))
         seen.add(rid)
         command = str(item.get("command", rid))
         if command not in ALLOWED_COMMANDS:
-            raise RoutineError(f"Routine {rid}: command '{command}' is not allowed. Allowed: {', '.join(sorted(ALLOWED_COMMANDS))}")
+            raise RoutineError(tr("Routine {id}: command '{command}' is not allowed. Allowed: {allowed}", id=rid, command=command,
+                                  allowed=", ".join(sorted(ALLOWED_COMMANDS))))
         skill = instruction = model = effort = ""
         if command == "skill":
             from .skills import EFFORTS, MODELS  # imported late: skills.py does not need routines
@@ -207,20 +210,22 @@ def load_routines(path: Path) -> list[Routine]:
             model = str(item.get("model", "")).strip().lower()
             effort = str(item.get("effort", "")).strip().lower()
             if not SKILL_ID_RE.match(skill):
-                raise RoutineError(f"Routine {rid}: `skill` missing or invalid (only a-z, 0-9, hyphen): '{skill}'")
+                raise RoutineError(tr("Routine {id}: `skill` missing or invalid (only a-z, 0-9, hyphen): '{skill}'", id=rid, skill=skill))
             if not instruction or len(instruction) > MAX_INSTRUCTION:
-                raise RoutineError(f"Routine {rid}: `instruction` missing or longer than {MAX_INSTRUCTION} characters")
+                raise RoutineError(tr("Routine {id}: `instruction` missing or longer than {max} characters", id=rid, max=MAX_INSTRUCTION))
             if model and model not in MODELS:
-                raise RoutineError(f"Routine {rid}: `model` '{model}' not allowed. Allowed: {', '.join(MODELS)}")
+                raise RoutineError(tr("Routine {id}: `model` '{model}' not allowed. Allowed: {allowed}", id=rid, model=model,
+                                      allowed=", ".join(MODELS)))
             if effort and effort not in EFFORTS:
-                raise RoutineError(f"Routine {rid}: `effort` '{effort}' not allowed. Allowed: {', '.join(EFFORTS)}")
+                raise RoutineError(tr("Routine {id}: `effort` '{effort}' not allowed. Allowed: {allowed}", id=rid, effort=effort,
+                                      allowed=", ".join(EFFORTS)))
         machine = item.get("machine", "any")
         machines = tuple(m.casefold() for m in ([machine] if isinstance(machine, str) else machine))
         sched_text = str(item.get("schedule", ""))
         try:
             schedule = Schedule.parse(sched_text)
         except RoutineError as exc:
-            raise RoutineError(f"Routine {rid}: {exc}") from exc
+            raise RoutineError(tr("Routine {id}: {error}", id=rid, error=exc)) from exc
         out.append(
             Routine(
                 id=rid,

@@ -17,6 +17,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.helpers import JS_I18N
+
 ROOT = Path(__file__).resolve().parent.parent
 HTML = (ROOT / "aos" / "web" / "dashboard.html").read_text(encoding="utf-8")
 JS = re.search(r"<script>\n(.*?)</script>", HTML, re.S).group(1)
@@ -66,7 +68,7 @@ const agentsFor = (n, t) => {
 @unittest.skipUnless(shutil.which("node"), "Node not installed")
 class GalaxyTransitionTests(unittest.TestCase):
     def _run(self, body: str, paint: bool = False):
-        src = PRELUDE + MODEL + (PAINT if paint else "") + FIXTURE + body
+        src = JS_I18N + PRELUDE + MODEL + (PAINT if paint else "") + FIXTURE + body
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "t.js"
             f.write_text(src, encoding="utf-8")

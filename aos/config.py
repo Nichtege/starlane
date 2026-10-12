@@ -9,6 +9,9 @@ from dataclasses import dataclass, fields, replace
 from datetime import date
 from pathlib import Path, PureWindowsPath
 
+from .i18n import normalize as normalize_language
+from .i18n import reply_language, tr
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Installed mode: a wheel or sdist install carries the starter files in aos/_shipped (built by setup.py) and there is no
@@ -97,7 +100,11 @@ class Conventions:
     index_note: str = "index.md"
     brain_map: str = "AI/brain-map.md"
     project_note: str = ""  # optional: note the generated files link to, e.g. "Projects/my-project"
-    digest_dir: str = "AI/Digest"  # set from [digest] dir, not from [conventions]
+    # set from [digest], not from [conventions]
+    digest_dir: str = "AI/Digest"
+    digest_file: str = "latest.md"  # the current digest inside digest_dir
+    digest_archive: str = "archive"  # one dated copy per day, inside digest_dir
+    review_file: str = "weekly-review.md"  # `aos claude-digest`, inside digest_dir
 
     @property
     def roots(self) -> tuple[str, str]:
@@ -116,32 +123,55 @@ class Conventions:
         return rel.startswith(self.digest_dir + "/")
 
 
-def _conventions(raw: dict, digest_dir: str) -> Conventions:
+FROM_DIGEST = {"digest_dir": "dir", "digest_file": "file", "digest_archive": "archive", "review_file": "review"}  # field -> [digest] key
+
+
+def _file_name(value, name: str, suffix: str = "") -> str:
+    """One plain file or folder name inside the digest folder: no path separators, no '..', no drive."""
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(tr("{name} must be a non-empty name", name=name))
+    text = value.strip()
+    if any(ch in text for ch in '/\\:*?"<>|') or text in (".", "..") or text.startswith("."):
+        raise ValueError(tr("{name} must be a plain name without folders: {value}", name=name, value=repr(value)))
+    if suffix and not text.endswith(suffix):
+        raise ValueError(tr("{name} must end in {suffix}: {value}", name=name, suffix=suffix, value=repr(value)))
+    return text
+
+
+def _digest_files(digest: dict) -> dict:
+    return {
+        "digest_file": _file_name(digest.get("file", "latest.md"), "digest.file", ".md"),
+        "digest_archive": _file_name(digest.get("archive", "archive"), "digest.archive"),
+        "review_file": _file_name(digest.get("review", "weekly-review.md"), "digest.review", ".md"),
+    }
+
+
+def _conventions(raw: dict, digest_dir: str, files: dict | None = None) -> Conventions:
     if not isinstance(raw, dict):
-        raise ValueError("[conventions] must be a table")
+        raise ValueError(tr("[conventions] must be a table"))
     known = {f.name: f for f in fields(Conventions)}
     values: dict = {}
     for key, value in raw.items():
         f = known.get(key)
-        if f is None or key == "digest_dir":
-            hint = " (set it with [digest] dir)" if key == "digest_dir" else ""
-            raise ValueError(f"conventions.{key} is not a known convention{hint}")
+        if f is None or key in FROM_DIGEST:
+            hint = " " + tr("(set it with [digest] {key})", key=FROM_DIGEST[key]) if key in FROM_DIGEST else ""
+            raise ValueError(tr("conventions.{key} is not a known convention", key=key) + hint)
         if isinstance(f.default, tuple):
             if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
-                raise ValueError(f"conventions.{key} must be a list of non-empty strings")
+                raise ValueError(tr("{name} must be a list of non-empty strings", name=f"conventions.{key}"))
             values[key] = tuple(v.strip() for v in value)
         else:
             if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"conventions.{key} must be a non-empty string")
+                raise ValueError(tr("{name} must be a non-empty string", name=f"conventions.{key}"))
             value = value.strip()
             if key.endswith("_dir"):
                 value = _safe_rel_dir(value.strip("/"), f"conventions.{key}")
             elif key in ("index_note", "brain_map") and not value.endswith(".md"):
-                raise ValueError(f"conventions.{key} must be a note path ending in .md: {value!r}")
+                raise ValueError(tr("conventions.{key} must be a note path ending in .md: {value}", key=key, value=repr(value)))
             elif key in ("project_note", "week_template") and value.endswith(".md"):
                 value = value[: -len(".md")]  # both are link targets, written without the extension
             values[key] = value
-    return replace(Conventions(), **values, digest_dir=digest_dir)
+    return replace(Conventions(), **values, digest_dir=digest_dir, **(files or {}))
 
 
 @dataclass(frozen=True)
@@ -166,6 +196,7 @@ class Config:
     skills_timeout_s: int = 600
     user_name: str = "the user"  # how agents address and refer to the human
     language: str = "English"  # language the agents reply in
+    ui_language: str = "en"  # language of the terminal, the dashboard and the generated notes (aos/i18n.py)
     conv: Conventions = Conventions()
 
     @property
@@ -198,7 +229,7 @@ def _safe_rel_dir(value: str, name: str = "digest.dir") -> str:
     p = Path(str(value))
     win = PureWindowsPath(str(value))  # also on Linux: "C:x" and "\\server" must not pass in a shared aos.toml
     if p.is_absolute() or p.anchor or win.drive or win.anchor or ".." in win.parts or not p.parts:
-        raise ValueError(f"{name} must be a relative folder inside the vault (no drive, no '..'): {value!r}")
+        raise ValueError(tr("{name} must be a relative folder inside the vault (no drive, no '..'): {value}", name=name, value=repr(value)))
     return p.as_posix()
 
 
@@ -213,21 +244,39 @@ MAX_USER_TEXT = 40
 def _text(value, name: str) -> str:
     """One short line: the value goes into every agent's system rules, so no line breaks and no essays."""
     if not isinstance(value, str) or not value.strip():
-        raise ValueError(f"{name} must be a non-empty string")
+        raise ValueError(tr("{name} must be a non-empty string", name=name))
     return " ".join(value.split())[:MAX_USER_TEXT].rstrip()
 
 
-def load_config(path: str | os.PathLike | None = None) -> Config:
+def config_path(path: str | os.PathLike | None = None) -> Path:
+    """The aos.toml a command reads: --config, else $AOS_CONFIG, else the one in the default folder."""
     given = path or os.environ.get("AOS_CONFIG")
-    cfg_path = Path(os.path.expanduser(given)) if given else default_root() / "aos.toml"   # cmd and PowerShell pass "~" through
+    return Path(os.path.expanduser(given)) if given else default_root() / "aos.toml"   # cmd and PowerShell pass "~" through
+
+
+def peek_ui_language(path: str | os.PathLike | None = None) -> str:
+    """Only `[user] ui_language` (or $AOS_UI_LANGUAGE), without checking anything else: the CLI needs the language
+    before it builds its help texts and before load_config reports an error in that language. "en" if unreadable."""
+    try:
+        code = os.environ.get("AOS_UI_LANGUAGE")
+        if not code:
+            with config_path(path).open("rb") as fh:
+                code = tomllib.load(fh).get("user", {}).get("ui_language", "en")
+        return normalize_language(code)
+    except (OSError, ValueError, AttributeError):  # TOMLDecodeError is a ValueError
+        return "en"
+
+
+def load_config(path: str | os.PathLike | None = None) -> Config:
+    cfg_path = config_path(path)
     raw: dict = {}
     if cfg_path.is_file():
         with cfg_path.open("rb") as fh:
             try:
                 raw = tomllib.load(fh)
             except tomllib.TOMLDecodeError as exc:
-                raise ValueError(f"{cfg_path}: {exc}. A Windows path is written with / (\"C:/Users/me/notes\") "
-                                 f"or in single quotes ('C:\\Users\\me\\notes').") from None
+                raise ValueError(tr("{path}: {error}. A Windows path is written with / (\"C:/Users/me/notes\") "
+                                    "or in single quotes ('C:\\Users\\me\\notes').", path=cfg_path, error=exc)) from None
     base = cfg_path.parent if cfg_path.is_file() else default_root()
 
     vault_raw = os.environ.get("AOS_VAULT") or raw.get("vault", {}).get("path") or "~/notes"
@@ -241,8 +290,9 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
     user = raw.get("user", {})
     dirs = skills.get("dirs", ["skills", "~/.claude/skills"])
     if not isinstance(dirs, list) or not all(isinstance(d, str) for d in dirs):
-        raise ValueError("skills.dirs must be a list of folders")
+        raise ValueError(tr("skills.dirs must be a list of folders"))
     digest_dir = _safe_rel_dir(digest.get("dir", "AI/Digest"))
+    ui_language = normalize_language(os.environ.get("AOS_UI_LANGUAGE") or user.get("ui_language", "en"))
     return Config(
         project_root=base,
         vault=vault,
@@ -263,6 +313,8 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
         skills_cap=max(1, int(skills.get("max_runs_per_day", 10))),
         skills_timeout_s=max(30, min(int(skills.get("timeout_s", 600)), 900)),
         user_name=_text(os.environ.get("AOS_USER") or user.get("name", "the user"), "user.name"),
-        language=_text(os.environ.get("AOS_LANGUAGE") or user.get("language", "English"), "user.language"),
-        conv=_conventions(raw.get("conventions", {}), digest_dir),
+        # the agents reply in the interface language unless [user] language names another one
+        language=_text(os.environ.get("AOS_LANGUAGE") or (user["language"] if "language" in user else reply_language(ui_language)), "user.language"),
+        ui_language=ui_language,
+        conv=_conventions(raw.get("conventions", {}), digest_dir, _digest_files(digest)),
     )

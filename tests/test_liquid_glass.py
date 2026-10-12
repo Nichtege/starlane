@@ -14,6 +14,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from tests.helpers import JS_I18N
+
 ROOT = Path(__file__).resolve().parent.parent
 HTML = (ROOT / "aos" / "web" / "dashboard.html").read_text(encoding="utf-8")
 JS = re.search(r"<script>\n(.*?)</script>", HTML, re.S).group(1)
@@ -31,7 +33,7 @@ def _css() -> str:
 @unittest.skipUnless(shutil.which("node"), "Node not installed")
 class LensModelTests(unittest.TestCase):
     def _run(self, body: str):
-        src = PRELUDE + MODEL + "\n" + body
+        src = JS_I18N + PRELUDE + MODEL + "\n" + body
         with tempfile.TemporaryDirectory() as d:
             f = Path(d) / "t.js"
             f.write_text(src, encoding="utf-8")
@@ -255,7 +257,7 @@ class EngineContractTests(unittest.TestCase):
 
     def test_script_has_no_literal_script_tag(self):
         # the server stamps a nonce onto every "<script" it finds in the template: a literal in a string or comment would be stamped too
-        self.assertEqual(HTML.count("<script"), 2)             # the data island and the script itself, nothing else
+        self.assertEqual(HTML.count("<script"), 3)             # the language and data islands and the script itself, nothing else
         self.assertNotIn("<script", ENGINE + MODEL)
         self.assertNotIn("</script", ENGINE + MODEL)
 
