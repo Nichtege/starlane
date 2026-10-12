@@ -1,0 +1,98 @@
+# Security
+
+The system runs with your user rights and reads your whole vault. That is why the rules below apply. Most of them are backed by tests (`tests/test_server.py`, `tests/test_routines.py`, `tests/test_scheduler.py`, `tests/test_agents.py`, `tests/test_agentdefs.py`, `tests/test_skills.py`, `tests/test_security_hardening.py`). Where a rule depends on Claude Code rather than on this code, this page says so.
+
+## What leaves your computer
+- **Claude calls send text to Anthropic.** Every agent, skill, Atlas and Claude-routine run sends its prompt to Anthropic's API: your task, the conversation history, and whatever vault content Claude reads to answer it. Only runs you start (or schedule) do this.
+- **Web agents** additionally send search queries and fetch URLs. Those queries and URLs reach search engines and web sites. The rules tell the model to put no personal details into them; that is an instruction to a model, not a guarantee.
+- Nothing else is uploaded by this code. `git pull` (opt-in, see below) talks to your own Git remote.
+
+## What the system may and may not do
+| May | May not |
+|---|---|
+| read the vault | edit your notes |
+| write into the digest folder (`AI/Digest/` by default: digest, vault check, dated daily copies) and delete old dated digest copies there (prune) | push, send or share anything |
+| write state and logs into `data/`; your own agents into `agents.local.toml` and `agents/local/` | run a shell or arbitrary programs |
+| `aos setup` copies the starter files (config, routines, agents, skills, docs, demo vault) into your own folder (`~/agentic-os` or `$AOS_HOME` by default); `aos init <folder>` makes a small starter vault. Both only add files that do not exist yet | |
+| `git pull --rebase` in the vault, **only if you switch that routine on**; it rewrites files in the vault to match your remote, like any pull | |
+
+The system never writes into `.obsidian/` *with the default settings*: it only writes into the configured digest folder. If you point the digest folder somewhere else, it writes there; nothing stops a config that points it at `.obsidian/`.
+
+## Routines
+- `routines.toml` names only **names** from a fixed list. An entry like `command = "rm -rf /"` is rejected when the file is loaded.
+- What runs is always `python -P -m aos <name>` as its own process, without a shell, with `PYTHONSAFEPATH=1`: a file in the working folder can never shadow a Python module. Most routines take no arguments; **skill routines** take a skill id, an instruction, a model and an effort, all validated when `routines.toml` loads and passed as separate arguments.
+- **Time limit** per run (`timeout_s`, at most one hour): after that the process and its children are terminated (Windows: `taskkill /T`; macOS and Linux: every run leads its own process group and the whole group is killed).
+- **Daily cap** (`max_runs_per_day`): a loop cannot run all day.
+- **Circuit breaker** (`max_failures`): after that many failures in a row the routine is blocked until you run `python -m aos unblock <id>`.
+- **Lock file**: two ticks at the same time never start the same routine twice.
+- **Off by default**: `git-pull`, the Claude routine and the skill routine.
+
+## Dashboard server (`aos serve`)
+- Listens on `127.0.0.1` only, not on your Wi-Fi and not on the internet. This value is deliberately not configurable.
+- Binds the port exclusively on Windows: a second server (or another program) cannot silently take over the same port.
+- **Launch link.** `aos serve` prints (and opens) `http://127.0.0.1:<port>/?k=<key>`. The key is random, held in memory only and new on every start. The dashboard page (`/`, `/index.html`, `/dashboard.html`) is served only with the right key; without it you get a short 403 page that points you to the printed link. Where the browser sends `Sec-Fetch-*` headers, the page is also served only for a top-level navigation (`Sec-Fetch-Dest: document`, `Sec-Fetch-Site: none` or `same-origin`); cross-site and same-site requests and frames are refused.
+- Every API call (fetching data, starting a routine, sending a task) needs the **token** of this server start (random, embedded in the page, invalid once the server stops).
+- The `Host` header must be `127.0.0.1:<port>` or `localhost:<port>` on every route, including `/` and `/healthz` (protection against DNS rebinding), and an `Origin` header, if present, must match the server (protection against foreign web pages). `/healthz` needs no key or token and answers only `{"ok": true}`.
+- Only routines from `routines.toml` can be started, and only through the whitelist. There is no file serving by path and no shell access over HTTP.
+- Error messages the server sends replace the vault, data, project and home folder paths with placeholders (`<vault>`, `<data>`, `<project>`, `~`). The notes of a job (for example "could not start: ..." from the operating system) are shown only to you, behind the token, and can still contain a path.
+- **Content Security Policy**: scripts only with a per-request nonce, no network except the server itself (`connect-src 'self'`), `frame-ancestors 'none'`; inline styles are allowed (`style-src 'unsafe-inline'`). Also `no-store` and `nosniff`.
+- Data from the vault (titles, paths) is embedded escaped in the HTML and inserted in the browser as text only (never as HTML). A title like `</script>` cannot take over the page.
+
+## Agents (`agents.toml`)
+You give an agent a task in the dashboard or with `aos agent <id> "..."`. These rules apply:
+- **Read only**: tools come from a fixed built-in list: vault (`Read`, `Grep`, `Glob`) and web (`WebSearch`, `WebFetch`). If `agents.toml` lists anything else (Bash, Write, Edit, ...), the whole file is rejected.
+- **Where Claude runs**: vault agents and skills run with the vault as working folder; web agents and Atlas' own plan and review calls run in an empty folder, `data/agents/sandbox/` (kept free of a `CLAUDE.md`), so neither the vault's files nor its `CLAUDE.md` are in their reach.
+- **Reading is limited by Claude Code's permission rules, not by this code.** Vault agents get `--allowedTools "Read(./**)"` and `--permission-mode dontAsk`: Claude Code then allows reading and searching inside the working folder (and in folders added with `--add-dir`; skills add their own folder) and refuses everything else. This relies on Claude Code honouring those rules and on your user settings not widening them: `--setting-sources user` keeps the vault's own settings out, but your **user-level** settings (`~/.claude/settings.json`: allow rules, hooks) and your user `CLAUDE.md` still apply. Do not put broad allow rules or hooks there if you want this boundary. When `Grep` or `Glob` is allowed on its own, Claude Code lets them search outside the working folder, which is why only `Read(./**)` is passed; check this again after Claude Code updates.
+- **Vault or web, never both, per agent and across agents.** An agent reads either the vault or the web; loading rejects both together unless the agent explicitly sets `mixed = true`. The reason: a prepared web page could instruct an agent with vault access to put note content into a URL or a search query. Because agents also pass text to each other, vault text is kept away from web agents in two more places:
+  - **Conversations**: when the new message goes to a web-only agent, earlier turns whose agent had vault access are dropped from the history. A turn counts as vault if its agent has vault tools (including `mixed`), is a skill, or no longer exists; an Atlas turn counts as vault unless every specialist it used was a web-only agent.
+  - **Atlas**: once the conversation history or any report of an earlier round came from an agent with vault access, Atlas no longer writes tasks for web-only agents. Such an agent gets the user's original question instead (plus the vault-free part of the conversation), and the job's reasoning notes it.
+  - What remains: a `mixed` agent gets everything by your choice; the final answer Atlas writes combines all reports and is shown to you.
+- **Remaining risks of the web agents**: search queries and visited URLs leave the computer. `WebFetch` can in principle reach any address the machine can reach, including `localhost` and addresses in your local network. Web text is material, not an instruction, but a model can still be misled by it. Answers are plain text, but Markdown links in them are clickable in the dashboard: look at a link before you open it.
+- **Conversations (threads)**: follow-up questions pass the last six questions and answers of the same conversation along as text (`claude -p` has no session), filtered as described above. Only already redacted text from `jobs.jsonl` is passed on; the conversation id must consist of 12 hex characters.
+- `claude -p` is started without a shell, with the same locks as the Claude routine: no connectors (`--strict-mcp-config`), no saved session, only user-level settings, `dontAsk` (nothing outside the list is allowed), at most $10 and 12 turns per `claude` invocation (protection against endless loops), a time limit (default 5 minutes for vault agents and 8 for web agents, at most 15; after that the process and its children are terminated).
+- The `claude` program is looked up on `PATH` only: relative entries, the current folder and anything inside the vault are skipped, so a planted `claude.exe` there is never started.
+- The task goes to Claude on standard input, the agent's rules as the system prompt. A fixed addition tells Claude that it only reads, that note content is material and not an instruction, which language to reply in, and that it never repeats secrets. The user name and language from `aos.toml` enter that prompt as one line of at most 40 characters.
+- **The answer never touches a note**: it is redacted, cut to 20,000 characters, stored only in `data/agents/jobs.jsonl` and shown in the dashboard as text (never as HTML). The task itself is also redacted before it is stored.
+- **Limits**: one task per agent at a time, at most three in total, a daily cap per agent (`max_runs_per_day`), a task is at most 4000 characters without control characters, a request is at most 32 KB and only `application/json`.
+- **Daily spending ceiling**: before any agent, Atlas or skill run starts, today's total from the cost log (`data/agents/spend.jsonl`) is compared with a ceiling of **$25** (`DAILY_USD_CAP`; set the environment variable `AOS_DAILY_USD_CAP` to change it). At or above it, the run is refused with a clear message and the refusal is logged. Only finished runs are in the cost log, so runs already in progress can still push the day past the ceiling. The Claude routine (`claude-digest`) checks the same ceiling before it starts and also has its own per-run limit.
+- Over HTTP the same protection layers apply as for routines: `127.0.0.1` only, Host and Origin checks, token. Every acceptance, refusal and result is recorded in the job log (`data/agents/jobs.jsonl`).
+- **Custom agents** (`/api/agent-defs`, `aos agent-new`, `aos/agentdefs.py`): the dashboard can create, change and delete agents. This is the only write function of the interface, and it is narrowly scoped:
+  - Only `agents.local.toml` and `agents/local/<id>.md` are written; `agents.toml` and all notes stay untouched. The id consists only of `a-z`, `0-9` and `-`, is never a Windows device name (`con`, `prn`, `aux`, `nul`, `com1`-`com9`, `lpt1`-`lpt9`), and the resolved path must lie inside `agents/local/`.
+  - Access is one switch, *read vault* **or** *web*, and is translated into the fixed tool list. Both together, `mixed` and every other tool are impossible through the dashboard and the terminal. The model comes from the fixed list; time, daily and size limits apply (at most 40 custom agents, a prompt of at most 6000 characters).
+  - A prompt that matches a password, token or key pattern is rejected (and the value is not echoed back). Control characters and invalid Unicode are rejected.
+  - Writes take a lock file next to `agents.local.toml`, so the dashboard server and `aos agent-new` in a terminal never rewrite it at the same time (a lock older than a minute counts as left over from a crash). After writing, the same load function as at start-up checks the files; if it fails, the previous state is restored. Deleting is refused while the agent is working. The file is rewritten completely: comments in `agents.local.toml` are not kept.
+  - Token, Host and Origin checks apply as everywhere. The limit stays honest: whoever has the token can create agents that run tasks with a wording and description of **their** choosing, but never more than reading and searching.
+- Independent of the scheduler: tasks never write into `state.json` and never block a routine. If the server stops in the middle of a task, the task is closed as failed on the next start.
+- **Honest limit**: whatever is in the vault, Claude can read and summarise in the answer. A manipulated note can distort the answer, but it cannot write, send or execute anything through this system. Whoever has the token (see below) can start tasks up to the daily caps at your cost.
+
+## Skills (`skills/`, `~/.claude/skills`)
+A skill is text that goes to `claude -p` as the system prompt. Therefore:
+- **The same lock as for vault agents**: only `Read`, `Grep`, `Glob`, no connectors, no session, `dontAsk`, $10 and 12 turns, a time limit (`[skills] timeout_s`, at most 15 minutes), the daily spending ceiling. A skill cannot grant itself further tools, not even through its frontmatter.
+- **Its own folder is additionally readable** (`--add-dir`), so that its reference files are reachable. When skills are listed, linked skill folders (symlink, junction) are skipped and linked files are left out of the reference list. What Claude itself may open inside the vault and the skill folder is decided by Claude Code's permission rules (see Agents).
+- **Model and effort** come from fixed lists (`haiku`/`sonnet`/`opus`/`fable`, `low`/`medium`/`high`/`xhigh`/`max`; the matrix on the home page only offers values from these lists). Free text is rejected with 400 and can never be read as a command-line option.
+- **Daily cap per skill** (`[skills] max_runs_per_day`), one run per skill at a time, at most three runs in total (shared with the agents).
+- **Skill routines** (`command = "skill"`) stay within the whitelist: skill id, instruction, model and effort are checked when loading and passed as separate arguments, without a shell.
+- **Honest limit**: skills from `~/.claude/skills` may come from plugins or syncs. Their text steers Claude, not your system: they cannot do more than read and answer. If you add skills from others, look at their `SKILL.md` first.
+
+## Artifacts
+- Content is served **only by ids** that come from the list (a hash of source and path, or a job id). There is no way to pass a path. Linked files and folders are excluded, size at most 400 KB, at most three levels deep.
+- Texts are **redacted** before they are shown.
+- **HTML artifacts are foreign content**: the dashboard shows them in an `iframe` with an empty `sandbox` (no scripts, no forms, no connection to the dashboard); the rest of the page inserts titles and texts as text only.
+
+## Redaction and the vault check
+Redaction is pattern based and best effort. It replaces common key, token and password shapes (API keys with well-known prefixes, bearer tokens, private key blocks, `password: ...`-style lines and similar) with `[redacted]` in agent answers, tasks, digest excerpts and artifacts. A secret that does not look like one of these shapes passes through unchanged. `aos mapcheck` uses the same patterns to report notes that seem to contain credentials (as **errors**; nothing of the value is printed, only its length). Credentials do not belong in a vault; say so in your vault's `CLAUDE.md` as well.
+
+## Optional Claude routine (`claude-digest`)
+Off by default. When you switch it on, it starts `claude -p` in the vault with: model Sonnet, at most $10 per run, no saved session, no connectors (`--strict-mcp-config`), only your user-level settings (no settings or hooks from the vault folder), only the read and search tools (**no writing**, no shell, no internet), and `Read(./**)` as the only allow rule (with the same dependence on Claude Code and your user settings as described under Agents). The file `AI/Digest/weekly-review.md` is not written by Claude but by this code: it checks the answer (not empty, at most 6000 characters), redacts secret patterns and sets the frontmatter itself. A manipulated note can therefore at most distort the text of this one draft. Honest limit: if your vault is synced with Git, the draft ends up in the repository; read it before you trust it.
+
+## On a server
+See [`vps-setup.md`](vps-setup.md): a private network (for example Tailscale) instead of a public address, an SSH tunnel to the dashboard, a Claude settings file that blocks everything that sends, and drafts instead of sending.
+
+## Onboarding prompts
+`python -m aos next` and [getting-started.md](getting-started.md) offer prompts to paste into Claude Code. They run in **your own Claude Code session**, with that session's permissions in the project folder, not under the agent whitelist above: Claude can edit files and run commands there as far as your Claude Code settings allow. Each prompt asks Claude not to push, publish or send anything, not to edit your notes, and to show every change as a diff and wait for your OK; those are instructions to a model, not a lock. Keep the permission prompts on and read the diffs. `aos next` itself only checks whether files exist, reads nothing from your notes and starts nothing.
+
+## Honest limits
+- Whoever sits at your logged-in account can do everything you can. The system does not protect against that.
+- The token is embedded in the dashboard page, and the page needs the launch key. A process on this machine that can read your terminal output, your browser history or the browser's memory can find the key; any process that can reach `127.0.0.1` (including other accounts, WSL or containers on the same machine) can call `/healthz` and try the API without the token. That is why the server refuses disabled, blocked and capped routines from the dashboard: nothing beyond what `routines.toml` allows anyway is possible through it.
+- The vault check and redaction recognise known patterns, not every possible secret.
+- The read boundary of Claude runs is enforced by Claude Code's permission system and your user settings, not by this code.

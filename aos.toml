@@ -1,0 +1,105 @@
+# Agentic OS configuration. Write paths with "/", also on Windows.
+# Every key is optional; the values below are the defaults unless marked as an example.
+# Environment overrides: AOS_CONFIG (this file), AOS_VAULT, AOS_DATA, AOS_MACHINE, AOS_USER, AOS_LANGUAGE.
+
+[user]
+# How the agents address and refer to you (prompts, digest greeting).
+name = "You"
+# The language every agent and skill replies in. Generated files (digest, vault check) stay English.
+language = "English"
+
+[vault]
+# The folder of Markdown notes the system reads (an Obsidian vault works as is). On a server: the path of the clone.
+# Ships pointing at the bundled demo vault so everything works out of the box. To use your own notes, change this to
+# your folder (or `python -m aos init ~/notes` to create a starter vault). Use '/' also on Windows.
+# A relative path is relative to this file.
+path = "examples/vault"
+# Vault name in Obsidian, used for the links that open a note directly in Obsidian. Default: the folder name,
+# so set it only if Obsidian shows a different name.
+# name = "MyVault"
+# Folders that are never read.
+ignore = [".git", ".obsidian", ".claude", ".trash", "node_modules"]
+# From this size on the vault check reports "never read whole" (agents read such notes section by section).
+large_file_kb = 50
+
+[machine]
+# Name of this computer. Routines with machine = "<name>" run only here, "any" runs everywhere.
+# Default: the host name. Set it only to tell several computers apart in routines.toml (see docs/vps-setup.md).
+# name = "my-laptop"
+
+[paths]
+# State and logs (outside the vault). Relative to this file.
+data = "data"
+routines = "routines.toml"
+# Shipped agents; your own agents live next to it in agents.local.toml.
+agents = "agents.toml"
+
+[digest]
+# Target folder inside the vault. This is the only place where the system writes into the vault.
+dir = "AI/Digest"
+# Daily copies older than this are removed.
+keep_days = 14
+# How many days ahead the digest looks for deadlines and appointments.
+horizon_days = 14
+
+[server]
+# The dashboard listens on 127.0.0.1 only (not reachable from the network). The host is deliberately not configurable.
+port = 8765
+
+[skills]
+# Where skills live (folders with SKILL.md). The first hit per skill id wins: the project beats ~/.claude/skills.
+dirs = ["skills", "~/.claude/skills"]
+# Runs per skill and day, time limit per run in seconds (at most 900).
+max_runs_per_day = 10
+timeout_s = 600
+
+# How YOUR vault is organised. Uncomment only what differs from these defaults; unknown keys are an error.
+# Every key is explained in docs/vault-conventions.md. The digest folder is set with [digest] dir above.
+# The shipped prompts in agents/ and skills/ name the default folders; edit them if yours differ.
+# [conventions]
+# # frontmatter keys
+# type_key = "type"
+# created_key = "created"
+# status_key = "status"
+# deadline_key = "deadline"
+# tags_key = "tags"
+# project_key = "project"
+# projects_key = "projects"
+# area_key = "area"
+# # values of the type key
+# type_project = "project"
+# type_idea = "idea"
+# type_week = "week"            # type_week/type_overview/type_index: written by `aos init`, reserved otherwise
+# type_plan = "plan"            # type_plan/type_knowledge/type_session: reserved, not read by any logic yet
+# type_knowledge = "knowledge"
+# type_session = "session"
+# type_overview = "overview"
+# type_index = "index"
+# type_digest = "digest"
+# # status vocabularies
+# project_status = ["idea", "new", "building", "active", "paused", "done"]
+# status_done = "done"          # always a valid project status
+# idea_status = ["raw", "in-progress", "project", "dropped"]
+# # headings and phrases inside notes
+# week_goal_heading = "Weekly goal"
+# weekly_review_heading = "Weekly review"
+# ideas_quick_heading = "Quick"
+# belongs_to = "Part of"
+# # dates in sections with these words are history, not appointments
+# log_words = ["status", "done", "log", "history", "result", "learned", "went wrong", "notes", "archive"]
+# # folders and notes
+# projects_dir = "Projects"
+# areas_dir = "Areas"
+# resources_dir = "Resources"
+# journal_dir = "Journal"
+# inbox_dir = "Inbox"
+# ideas_dir = "Ideas"
+# archive_dir = "Archive"
+# templates_dir = "Resources/Templates"
+# ai_dir = "AI"
+# sessions_dir = "AI/Sessions"
+# week_template = "Resources/Templates/week"
+# schedule_keyword = "schedule"
+# index_note = "index.md"       # index_note and brain_map must end in .md
+# brain_map = "AI/brain-map.md"
+# project_note = "Projects/my-project"

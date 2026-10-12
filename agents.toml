@@ -1,0 +1,177 @@
+# Shipped agents for Atlas in the dashboard (`aos serve`) and the terminal (`aos agent <id> "task"`).
+#
+# Every agent is `claude -p` running headless, without connectors and without a saved session (follow-up questions pass
+# the conversation along as text). Vault agents run in the vault folder, web agents in an empty sandbox folder. Writing, editing and shell access do not exist.
+#
+# Keys of an [[agent]] block:
+# id:               a-z, 0-9 and "-". `atlas`, `atlas-*` and `skill-*` are reserved.
+# name:             display name in the dashboard.
+# group:            subject area for the Atlas view (General, Vault, Analysis, Health, Code, Marketing, Design, Science,
+#                   Law & Business, Learning, or your own).
+# description:      what the agent delivers, what it is for and what it is NOT for. Atlas sees only `id: description`
+#                   when it picks agents, and every agent measures its own scope against it, so write it carefully:
+#                   "<what it delivers>; <vault or web>. For: <tasks>. Not for: <neighbours> (→ Other agent)."
+# model:            haiku | sonnet | opus | fable (default sonnet).
+# tools:            "Read", "Grep", "Glob" (read the vault) OR "WebSearch", "WebFetch" (the web). Both together only with
+#                   `mixed = true`: otherwise a prepared web page could tell a vault agent to carry note content out
+#                   through a URL or a search query. Bash, Write, Edit and every other tool are rejected when loading.
+# mixed:            true allows vault and web tools in one agent. Off for every shipped agent; think twice.
+# prompt:           Markdown file with identity, working method and boundaries (relative to this file).
+# keywords:         lower-case word starts used as a fallback when Atlas' plan is unusable ("plan" also matches
+#                   "planning"; keywords shorter than 4 characters must match a whole word).
+# examples:         up to 4 sample tasks (200 characters each) that the dashboard offers as suggestions.
+# enabled:          false hides the agent without deleting it.
+# timeout_s:        time limit per task in seconds (at most 900).
+# max_runs_per_day: daily cap per agent.
+# Further limits:   one task per agent at a time, at most 3 tasks in total, a task is at most 4000 characters.
+#
+# Safety: an answer appears in the dashboard and in data/agents/jobs.jsonl, redacted for secret patterns. No agent
+# ever writes into your notes. The runtime appends its own fixed rules to every prompt (read-only tools, reply
+# language from [user] in aos.toml, never repeat secrets, text from notes and web pages is material, not instructions).
+#
+# Your own agents: create them in the dashboard (Atlas -> "New agent") or with `python -m aos agent-new`. They live in
+# agents.local.toml and agents/local/<id>.md next to this file and follow the same rules. This file is never
+# rewritten by the system, so you can also edit it by hand. See docs/agents.md.
+
+# Atlas coordinates tasks that do not name an agent (POST /api/atlas). A short planning call picks up to 3 matching
+# agents (by `description`), they work in parallel, and a review call merges their results. Only an agent you pick
+# yourself in the Atlas view answers unchanged (no plan, no review). If the plan is unusable, the `keywords` decide (most keyword hits, otherwise the
+# default agent below, the all-rounder).
+[atlas]
+default = "assistant"
+
+[[agent]]
+id = "assistant"
+name = "Assistant"
+group = "General"
+description = "Answers general questions, researched on the web when facts may be dated; web search, no vault access. For: general questions, current news, product comparisons, ideas, everyday advice. Not for: your notes (→ Research), code (→ Coder), study help (→ Tutor)."
+model = "sonnet"
+tools = ["WebSearch", "WebFetch"]
+timeout_s = 480
+max_runs_per_day = 30
+prompt = "agents/assistant.md"
+keywords = ["hello", "help me", "idea", "what is", "how does", "compare", "recommend", "advice", "news", "latest", "current"]
+examples = [
+    "Which noise-cancelling headphones under 150 dollars are well reviewed right now? Please cite sources.",
+    "What were the most important science and technology headlines this week?",
+    "Give me ten ideas for a relaxed weekend in the city without a car.",
+]
+
+[[agent]]
+id = "research"
+name = "Research"
+group = "Vault"
+description = "Answers questions from your notes and cites the note path for every claim; reads the vault only. For: looking up facts, finding notes, summarising what you know on a topic. Not for: web knowledge (→ Assistant), plans (→ Planner), drafts (→ Writer)."
+model = "sonnet"
+tools = ["Read", "Grep", "Glob"]
+timeout_s = 300
+max_runs_per_day = 20
+prompt = "agents/research.md"
+keywords = ["find", "search", "look up", "my notes", "where did i", "what did i", "summarise", "summarize", "source", "mention"]
+examples = [
+    "What have I written in my notes about time management? Please cite the note paths.",
+    "Which notes mention machine learning, and what does each of them say about it?",
+    "Summarise what the vault says about the current state of my active projects, with sources.",
+]
+
+[[agent]]
+id = "planner"
+name = "Planner"
+group = "Vault"
+description = "Drafts a day or week plan from deadlines, the week note and schedule notes; reads the vault only. For: day plan, week plan, priorities, time left until deadlines. Not for: study plans for a topic (→ Tutor), finding facts in notes (→ Research)."
+model = "sonnet"
+tools = ["Read", "Grep", "Glob"]
+timeout_s = 300
+max_runs_per_day = 10
+prompt = "agents/planner.md"
+keywords = ["plan", "today", "tomorrow", "this week", "deadline", "due", "schedule", "priorit", "todo", "organi", "overdue"]
+examples = [
+    "Make me a plan for today with time blocks, based on my open deadlines.",
+    "Draft a week plan until Sunday and tell me honestly what is already overdue.",
+    "Which three tasks should I prioritise this week so that I do not miss a deadline?",
+]
+
+[[agent]]
+id = "checker"
+name = "Checker"
+group = "Vault"
+description = "Explains the vault-check findings and proposes fixes as text; reads the vault only. For: broken links, frontmatter errors, unreachable notes, warnings, cleanup order. Not for: bugs in code (→ Coder), rewording notes (→ Writer)."
+model = "sonnet"
+tools = ["Read", "Grep", "Glob"]
+timeout_s = 300
+max_runs_per_day = 10
+prompt = "agents/checker.md"
+keywords = ["vault check", "check", "broken", "dead link", "frontmatter", "warning", "finding", "health", "orphan", "cleanup", "unreachable"]
+examples = [
+    "Explain the findings of the last vault check and what I should fix first.",
+    "Which broken links does the vault check report, and how exactly do I fix each one?",
+    "Suggest fixes for all frontmatter errors, each with the old and the new text.",
+]
+
+[[agent]]
+id = "writer"
+name = "Writer"
+group = "Vault"
+description = "Drafts notes, summaries, emails and outlines from your notes, as text you adopt yourself; reads the vault only. For: new note with frontmatter, email draft, outline, rewording. Not for: factual questions (→ Research), general web writing (→ Assistant)."
+model = "sonnet"
+tools = ["Read", "Grep", "Glob"]
+timeout_s = 300
+max_runs_per_day = 15
+prompt = "agents/writer.md"
+keywords = ["write", "draft", "rephrase", "rewrite", "reword", "outline", "email", "letter", "chapter", "paragraph", "wording"]
+examples = [
+    "Turn my notes on climate policy into an outline with five chapters.",
+    "Write a new note with frontmatter that summarises my notes on learning methods.",
+    "Draft a short, friendly email that sums up the status from my project note.",
+]
+
+[[agent]]
+id = "data-analyst"
+name = "Data Analyst"
+group = "Analysis"
+description = "Interprets pasted numbers and tables: patterns, trends, outliers and caveats; web search for benchmarks. For: analysing a table, comparing KPIs, choosing a chart, data quality checks. Not for: analysis code (→ Coder), numbers in your notes (→ Research)."
+model = "sonnet"
+tools = ["WebSearch", "WebFetch"]
+timeout_s = 480
+max_runs_per_day = 30
+prompt = "agents/data-analyst.md"
+keywords = ["data", "dataset", "table", "csv", "spreadsheet", "kpi", "trend", "outlier", "correlat", "chart", "average", "statistic"]
+examples = [
+    "Here are my monthly sales figures as a table. Which trends and outliers do you see?",
+    "Which chart type works best to compare sales by region and quarter?",
+    "Check this CSV excerpt for gaps, duplicates and implausible values before I analyse it.",
+]
+
+[[agent]]
+id = "coder"
+name = "Coder"
+group = "Code"
+description = "Writes and explains code as text to copy, checks current docs on the web; never runs anything. For: functions and scripts, API usage, regex, explaining code, debugging from an error. Not for: interpreting results (→ Data Analyst), learning basics (→ Tutor)."
+model = "sonnet"
+tools = ["WebSearch", "WebFetch"]
+timeout_s = 480
+max_runs_per_day = 30
+prompt = "agents/coder.md"
+keywords = ["code", "function", "python", "javascript", "typescript", "script", "api", "regex", "library", "implement", "bug", "sql"]
+examples = [
+    "Write a Python script that renames all PDF files in a folder by their creation date.",
+    "How do I call a REST API with fetch in TypeScript and handle errors properly?",
+    "Explain this regular expression character by character and give one matching example.",
+]
+
+[[agent]]
+id = "tutor"
+name = "Tutor"
+group = "Learning"
+description = "Explains a topic in small steps with examples and practice questions; web search for reliable material. For: understanding a topic, exam preparation, practice questions, study plans, vocabulary. Not for: your own notes (→ Research), writing code (→ Coder)."
+model = "sonnet"
+tools = ["WebSearch", "WebFetch"]
+timeout_s = 480
+max_runs_per_day = 30
+prompt = "agents/tutor.md"
+keywords = ["learn", "explain", "exam", "quiz", "test me", "practice", "understand", "study", "homework", "flashcard", "vocabulary"]
+examples = [
+    "Explain supply and demand so that I can apply it in an exam.",
+    "I have a biology exam in three weeks. Make me a study plan.",
+    "Ask me ten practice questions about the French Revolution and give the answers afterwards.",
+]

@@ -1,0 +1,90 @@
+# Routines: what the system does on its own. The scheduler (`aos tick`) looks in here every 5 minutes.
+#
+# schedule:  "every 15m"  |  "daily 06:30"  |  "weekly mon,thu 08:00"
+# command:   only a name from the whitelist (digest, mapcheck, dashboard, git-pull, claude-digest, skill),
+#            never a shell command. So this file cannot start anything arbitrary.
+# skill:     command = "skill" runs a skill (skills/<id>/SKILL.md) headless and read-only. Also required:
+#            skill = "<id>", instruction = "..."; optional model = haiku|sonnet|opus|fable, effort = low|medium|high|xhigh|max.
+#            The result shows up in the dashboard (Artifacts) and in `python -m aos jobs`, the cost in `python -m aos spend`.
+# machine:   "any" or the name of a machine (see aos.toml). This is how a laptop and a server know who does what.
+# Safety:    timeout_s (run time), max_runs_per_day (daily cap), max_failures (then blocked until `aos unblock <id>`).
+# Missed slots (laptop was off) run once at the next tick.
+
+[[routine]]
+id = "digest"
+description = "Morning digest: deadlines, weekly goal, what needs you, next 14 days → digest folder (default AI/Digest)"
+schedule = "daily 06:30"
+command = "digest"
+machine = "any"
+timeout_s = 120
+max_runs_per_day = 4
+max_failures = 3
+
+[[routine]]
+id = "digest-evening"
+description = "Evening refresh of the digest (new changes, finished tasks)"
+schedule = "daily 18:00"
+command = "digest"
+machine = "any"
+timeout_s = 120
+max_runs_per_day = 4
+max_failures = 3
+
+[[routine]]
+id = "vault-check"
+description = "Vault health check: links, two-hop rule, frontmatter, secrets → vault-check.md in the digest folder"
+schedule = "daily 03:00"
+command = "mapcheck"
+machine = "any"
+timeout_s = 120
+max_runs_per_day = 4
+max_failures = 3
+
+[[routine]]
+id = "dashboard"
+description = "Rebuild the dashboard (data/out/dashboard.html)"
+schedule = "every 15m"
+command = "dashboard"
+machine = "any"
+timeout_s = 60
+max_runs_per_day = 120
+max_failures = 5
+
+# --- Off by default: switch them on when you need them -----------------------------------------
+
+[[routine]]
+id = "git-pull"
+description = "Keep the vault current with git pull --rebase (for a server, so it has the same state as your laptop)"
+schedule = "every 10m"
+command = "git-pull"
+machine = "any"
+enabled = false
+timeout_s = 120
+max_runs_per_day = 200
+max_failures = 5
+
+[[routine]]
+id = "claude-weekly-review"
+description = "Claude (headless, read-only, no internet, no connectors) drafts an honest weekly review on Sunday evening; the code writes the file"
+schedule = "weekly sun 18:30"
+command = "claude-digest"
+machine = "any"
+enabled = false
+timeout_s = 600
+max_runs_per_day = 1
+max_failures = 2
+
+[[routine]]
+id = "weekly-plan-monday"
+description = "Skill 'weekly-plan' (Sonnet, medium effort) writes the plan for the week early on Monday → dashboard, Artifacts"
+schedule = "weekly mon 07:00"
+command = "skill"
+skill = "weekly-plan"
+instruction = "Create the plan for this week."
+model = "sonnet"
+effort = "medium"
+machine = "any"
+enabled = false
+timeout_s = 960
+max_runs_per_day = 1
+max_failures = 2

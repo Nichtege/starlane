@@ -1,0 +1,11 @@
+# Mirrors aos/shipped.py: an sdist must carry everything the wheel build copies into aos/_shipped.
+# Root files only get in through `include`, so agents.local.toml and *.lock at the root never do.
+include CONTRIBUTING.md SECURITY.md aos.toml routines.toml agents.toml aos_tick.pyw
+graft agents
+graft skills
+graft docs
+graft examples
+prune agents/local
+prune examples/vault/AI/Digest
+prune examples/vault/.obsidian
+global-exclude *.py[cod] *.lock .DS_Store ._* Thumbs.db desktop.ini

@@ -1,0 +1,20 @@
+# Example of a custom agent. To use it, copy this file and the agents/local/ folder next to agents.toml in the
+# project root (or create the same agent in the dashboard: Atlas -> "New agent").
+# Note: the dashboard and `aos agent-new` rewrite agents.local.toml completely, so comments do not survive there.
+
+[[agent]]
+id = "travel-planner"
+name = "Travel Planner"
+group = "Travel"
+description = "Plans trips with routes, timings and rough costs; web search, no vault access. For: itineraries, train and flight options, opening hours, packing lists. Not for: budgeting your finances (→ Data Analyst), general questions (→ Assistant)."
+model = "sonnet"
+tools = ["WebSearch", "WebFetch"]
+timeout_s = 480
+max_runs_per_day = 20
+prompt = "agents/local/travel-planner.md"
+keywords = ["trip", "travel", "itinerary", "train", "flight", "hotel", "packing"]
+examples = [
+    "Plan a three-day trip to Lisbon by train with a rough budget per day.",
+    "What is the fastest way from Munich to Vienna by train, and how much does it cost?",
+    "Make me a packing list for a week of hiking in autumn.",
+]

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=77"]   # 77: the SPDX license string below, without deprecation warnings
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-os"
+dynamic = ["version"]   # aos/__init__.py: __version__
+readme = "README.md"
+license = "MIT"
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: OS Independent"]
+description = "A small, stdlib-only operating system around your Markdown notes and Claude Code: memory check, specialist agents, routines, local dashboard"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+aos = "aos.cli:main"
+
+[tool.setuptools]
+packages = ["aos"]
+include-package-data = false   # what ships is listed here and in setup.py (aos/_shipped), not guessed from MANIFEST.in
+
+[tool.setuptools.dynamic]
+version = { attr = "aos.__version__" }
+
+[tool.setuptools.package-data]
+aos = ["web/*.html", "web/fonts/*"]

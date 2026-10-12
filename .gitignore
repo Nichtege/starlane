@@ -1,0 +1,18 @@
+# Runtime data (state, logs, generated dashboards) never belongs in the repo
+data/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+aos/_shipped/
+.venv/
+.pytest_cache/
+
+# Digests generated from the bundled demo vault
+examples/vault/AI/Digest/
+
+# Your own agents (dashboard / `aos agent-new`): local data, not part of the project
+/agents.local.toml
+agents/local/
+
