@@ -33,7 +33,10 @@ and some long-term-support systems still ship 3.10). For agents and skills also 
 dashboard need nothing else.
 
 ```bash
-# 0. Get the code (clone or download it into any folder except ~/starlane, which `aos setup` makes), open a terminal in it and install it
+# 0. First download this repository (or the ZIP from the green "Code" button on GitHub, unpacked).
+#    Any folder except ~/starlane, which `aos setup` makes: hence the name starlane-src.
+git clone https://github.com/wvmjprmdzj-beep/starlane.git starlane-src
+cd starlane-src               # every step below runs from a terminal opened here (until step 1 moves you)
 python -m pip install .       # adds the `aos` command; no dependencies. macOS / Linux: python3 -m pip install .
 
 # 1. One folder for your setup: ~/starlane (or the folder in $AOS_HOME). Never overwrites a file.
@@ -51,7 +54,7 @@ aos serve
 aos agent research "What are my active projects and when are they due?"
 ```
 
-**Rather have Claude Code do it?** Open `claude` in the folder of this repository and paste:
+**Rather have Claude Code do it?** Download the repository first (step 0), open `claude` in that folder and paste:
 
 > Install Starlane from this folder with `python -m pip install .` (use pipx or a virtual environment if pip refuses it), run `aos setup`, then `aos doctor` and `aos digest` from `~/starlane`. Tell me for each step whether it worked, start `aos serve` and give me the link. Do not change anything outside this folder and `~/starlane`.
 
