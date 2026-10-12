@@ -118,7 +118,9 @@ class CreateTests(DefsCase):
     def test_create_writes_prompt_and_local_file_and_agent_is_loaded(self):
         a = AD.create(self.cfg, GOOD)
         self.assertEqual((a.id, a.name, a.group, a.custom), ("trip-planner", "Trip Planner", "Custom", True))
-        self.assertEqual(a.tools, A.WEB_TOOLS)  # web, no vault: never both
+        self.assertEqual(a.tools, A.VAULT_TOOLS + A.WEB_TOOLS)  # web agents read the vault for context, as `mixed`
+        self.assertTrue(a.vault and a.web)
+        self.assertIs(self.local()[0]["mixed"], True)
         self.assertEqual(a.keywords, ("trip", "vacation", "packing list"))
         self.assertEqual(len(a.examples), 2)
         self.assertEqual(a.prompt_file, (self.root / "agents" / "local" / "trip-planner.md").resolve())
@@ -230,7 +232,7 @@ class CreateTests(DefsCase):
 
         job = A.submit(self.cfg, "trip-planner", "Lisbon, 3 days", wait=True, runner=runner)
         self.assertEqual(job["status"], "ok")
-        self.assertEqual(seen, [("trip-planner", ("WebSearch", "WebFetch"), "sonnet")])
+        self.assertEqual(seen, [("trip-planner", A.VAULT_TOOLS + A.WEB_TOOLS, "sonnet")])
 
 
 class UpdateDeleteTests(DefsCase):
@@ -242,12 +244,13 @@ class UpdateDeleteTests(DefsCase):
         got = AD.update(self.cfg, self.a.id, {"model": "opus", "group": "Travel", "enabled": False})
         self.assertEqual((got.model, got.group, got.enabled), ("opus", "Travel", False))
         self.assertEqual(got.description, GOOD["description"])
-        self.assertEqual(got.tools, A.WEB_TOOLS)
+        self.assertEqual(got.tools, A.VAULT_TOOLS + A.WEB_TOOLS)
         self.assertEqual(got.keywords, ("trip", "vacation", "packing list"))
 
     def test_update_can_switch_access_never_to_both(self):
         got = AD.update(self.cfg, self.a.id, {"access": "vault"})
         self.assertEqual(got.tools, A.VAULT_TOOLS)
+        self.assertNotIn("mixed", self.local()[0])  # back to vault only: the switch goes with the web tools
         with self.assertRaises(A.Refused):
             AD.update(self.cfg, self.a.id, {"access": "both"})
 
@@ -277,9 +280,9 @@ class UpdateDeleteTests(DefsCase):
 
     def test_unknown_keys_in_the_local_file_are_preserved(self):
         path = AD.local_file(self.cfg)
-        path.write_text(path.read_text(encoding="utf-8").replace("enabled = true", "enabled = true\nmixed = false"), encoding="utf-8")
+        path.write_text(path.read_text(encoding="utf-8").replace("enabled = true", "enabled = true\nnote = \"by hand\""), encoding="utf-8")
         AD.update(self.cfg, self.a.id, {"model": "haiku"})
-        self.assertIn("mixed", self.local()[0])
+        self.assertEqual(self.local()[0]["note"], "by hand")
 
     def test_read_returns_every_editable_field(self):
         r = AD.read(self.cfg, self.a.id)
@@ -427,7 +430,7 @@ class CliDefsTests(DefsCase):
         self.assertEqual(code, 0, out)
         self.assertIn("trip-planner", out)
         a = self.agent("trip-planner")
-        self.assertEqual((a.tools, a.keywords, a.examples), (A.WEB_TOOLS, ("trip", "vacation"), ("Plan Lisbon",)))
+        self.assertEqual((a.tools, a.keywords, a.examples), (A.VAULT_TOOLS + A.WEB_TOOLS, ("trip", "vacation"), ("Plan Lisbon",)))
         code, out = self.run_cli("agents")
         self.assertIn("(custom)", out)
         code, out = self.run_cli("agent-rm", "trip-planner", "--yes")

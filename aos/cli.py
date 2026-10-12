@@ -396,7 +396,7 @@ def cmd_agent_new(cfg: Config, args) -> int:
         raw = {
             "name": _ask(tr("Name")),
             "description": _ask(tr("Description (what it is for, and what not: Atlas picks agents by this)")),
-            "access": _ask(tr("Access: vault (read notes) or web (web search)"), "vault"),
+            "access": _ask(tr("Access: vault (read notes) or web (read notes and search the web)"), "vault"),
             "group": _ask(tr("Field"), custom),
             "model": _ask(tr("Model ({models})", models=", ".join(MODELS)), DEFAULT_MODEL),
             "keywords": _ask(tr("Keywords, comma-separated (optional)")),
@@ -658,7 +658,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="starlane", description=tr("Starlane for a Markdown vault and Claude Code"))
     p.add_argument("--config", help=tr("path to aos.toml (default: $AOS_CONFIG; after `pip install` the aos.toml in $AOS_HOME or ~/starlane; "
                                     "in a clone the one in the project folder)"))
-    p.add_argument("--version", action="version", version=f"aos {__version__}")
+    p.add_argument("--version", action="version", version=f"starlane {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True, metavar=tr("command"))
     ini = sub.add_parser("init", help=tr("create a starter vault in <folder> (never overwrites)"))
     ini.add_argument("folder", help=tr("target folder, created if missing"))
@@ -707,7 +707,7 @@ def build_parser() -> argparse.ArgumentParser:
     an.add_argument("--description", help=tr("what it is responsible for, and what not (Atlas picks agents by this)"))
     an.add_argument("--instructions", help=tr("instructions as text"))
     an.add_argument("--instructions-file", help=tr("instructions from a Markdown file"))
-    an.add_argument("--web", action="store_true", help=tr("web search instead of reading notes (never both)"))
+    an.add_argument("--web", action="store_true", help=tr("search the web as well (it reads your notes either way)"))
     an.add_argument("--group", help=tr("field in the Atlas view (default: {group})", group=tr(AD.CUSTOM_GROUP)))
     an.add_argument("--model", help=tr("haiku | sonnet | opus | fable (default: sonnet)"))
     an.add_argument("--keyword", action="append", help=tr("keyword for routing (repeatable)"))

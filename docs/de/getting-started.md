@@ -227,7 +227,7 @@ Die mitgelieferten Agenten sind ein Anfang. Ein Spezialist mit einer scharfen Be
 *Gilt als erledigt, wenn* `agents.local.toml` existiert (es wird entfernt, wenn du deinen letzten eigenen Agenten löschst).
 
 1. Dashboard: Atlas-Ansicht > Neuer Agent. Terminal: `python -m aos agent-new` (fragt Schritt für Schritt).
-2. Entscheide: vault (liest Notizen) oder web (sucht im Web), nie beides.
+2. Entscheide: vault (liest Notizen) oder web (liest Notizen und sucht im Web).
 3. Schreib die Beschreibung so: was er liefert; vault oder web. Für: ... Nicht für: ... (→ anderer Agent). Siehe docs/de/agents.md.
 4. Deine Agenten landen in agents.local.toml und agents/local/; löschen mit `python -m aos agent-rm <id>`.
 
@@ -238,7 +238,7 @@ Antworte mir auf Deutsch.
 
 Hilf mir, meinen eigenen Starlane-Agenten zu entwerfen und anzulegen.
 Lies zuerst docs/de/README.md, docs/de/agents.md (besonders "Eine gute Beschreibung schreiben" und "Eigene Agenten anlegen") und agents.toml in diesem Ordner.
-1. Frag mich, was der Agent für mich tun soll, mit zwei oder drei echten Beispielaufgaben. Dann entscheide mit mir: Vault-Zugriff (liest meine Notizen) oder Web-Zugriff (Websuche), nie beides.
+1. Frag mich, was der Agent für mich tun soll, mit zwei oder drei echten Beispielaufgaben. Dann entscheide mit mir: Vault-Zugriff (liest meine Notizen) oder Web-Zugriff (liest meine Notizen und sucht im Web).
 2. Schlag vor: Name, Beschreibung nach dem Muster aus docs/de/agents.md (höchstens 280 Zeichen, mit "Nicht für"-Nachbarn), Gruppe, Modell, bis zu 12 Stichwörter, bis zu 4 Beispielaufgaben und Anweisungen mit den Abschnitten Identität, Arbeitsweise, Grenzen, Ausgabe (`python -m aos agent-new --template` gibt eine Vorlage aus).
 3. Nachdem ich zugestimmt habe, schreib die Anweisungen in eine temporäre Markdown-Datei in diesem Ordner, führ `python -m aos agent-new --name "..." --description "..." --instructions-file <file> [--web] --group "..." --model ... --keyword ... --example "..."` aus und lösch danach die temporäre Datei.
 4. Führ `python -m aos agents` aus und zeig mir den neuen Agenten. Frag, bevor du eine Testaufgabe startest, denn das kostet Geld.

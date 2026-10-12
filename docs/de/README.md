@@ -126,9 +126,10 @@ mit einem fertigen Prompt für Claude Code für jeden Schritt. Die ganze Anleitu
 
 ## Sicherheitsmodell
 
-- **Nur lesende Agenten.** Werkzeuge kommen aus einer festen Positivliste: Vault (`Read`, `Grep`, `Glob`) oder Web
-  (`WebSearch`, `WebFetch`), nie beides, außer ein Agent entscheidet sich mit `mixed = true` ausdrücklich dafür. Alles
-  andere wird beim Laden der Datei abgelehnt.
+- **Nur lesende Agenten.** Werkzeuge kommen aus einer festen Positivliste: Vault (`Read`, `Grep`, `Glob`) und Web
+  (`WebSearch`, `WebFetch`). Jeder Agent liest deine Notizen als Kontext; einer, der außerdem im Web sucht, braucht
+  `mixed = true` und hat die feste Regel, nie Notiztext in eine Suche oder URL zu schreiben. Alles andere wird beim
+  Laden der Datei abgelehnt.
 - **Schreibt nie in deine Notizen.** Die einzige Stelle im Vault, an die das System schreibt, ist der Digest-Ordner
   (die Ausnahme ist die Routine `git-pull`, die du einschalten musst: Sie führt dort `git pull --rebase` aus, was
   Dateien an deinen Remote anpasst).

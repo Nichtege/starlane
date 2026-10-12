@@ -7,7 +7,9 @@ import json
 import subprocess
 import threading
 import time
+from dataclasses import replace
 from datetime import datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
@@ -77,8 +79,10 @@ class LoadTests(AgentCase):
             self.assertTrue(a.enabled, a.id)
             self.assertTrue(set(a.tools) <= set(A.ALLOWED_TOOLS), a.id)
             self.assertTrue(a.prompt_file.is_file(), a.id)
-            # never vault and web together: a prepared web page could otherwise carry notes out
-            self.assertFalse(any(t in A.VAULT_TOOLS for t in a.tools) and a.web, a.id)
+            # every agent reads the vault for context; the web ones are `mixed` (loading refuses both without it)
+            self.assertTrue(a.vault, a.id)
+            self.assertEqual(a.tools, A.VAULT_TOOLS + (A.WEB_TOOLS if a.web else ()), a.id)
+            self.assertEqual(A.workdir(SimpleNamespace(vault=Path("V")), a), Path("V"), a.id)
             if a.group == "Vault":
                 self.assertEqual(a.tools, A.VAULT_TOOLS, a.id)
             self.assertIn("For:", a.description, a.id)
@@ -157,6 +161,14 @@ class PersonaTests(AgentCase):
         self.assertIn("shown to Sam", text)
         self.assertIn("The task comes from Sam", text)
         self.assertIn("Reply in English", A.rules(agent, "2026-10-11"))  # defaults
+
+    def test_mixed_agents_are_told_to_use_the_vault_and_keep_notes_out_of_searches(self):
+        base = A.load_agents(self.cfg.agents_file)[0]
+        mixed = A.rules(replace(base, tools=A.VAULT_TOOLS + A.WEB_TOOLS), "2026-10-11", "Sam")
+        self.assertIn("first look up what Sam already noted", mixed)
+        self.assertIn("never put note text, note paths, names or private details from notes into a search query or a URL", mixed)
+        for tools in (A.VAULT_TOOLS, A.WEB_TOOLS):  # only both together need it
+            self.assertNotIn("Nothing from the notes leaves", A.rules(replace(base, tools=tools), "2026-10-11"))
         for prompt in (A.RULES_HEAD, A.NEW_MSG):  # the name is always a placeholder, never hard-coded
             self.assertIn("{user}", prompt)
         for prompt in (A.PLAN_PROMPT, A.STEP_PROMPT, A.BRIEF_RULE):

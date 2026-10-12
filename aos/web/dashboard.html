@@ -1383,7 +1383,7 @@ select.agx-in option { background: #090b19; color: #f3eee6; }
 .atl-pick .mp-pop { top: auto; bottom: calc(100% + 8px); }
 .atl-chead-act { display: flex; gap: 8px; align-items: flex-start; flex: none; }
 .atl-recent { position: relative; }
-.atl-recent-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: min(340px, calc(100vw - 32px)); max-height: 60vh; overflow: auto; padding: 6px;
+.atl-recent-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; width: min(340px, calc(100vw - 32px)); max-height: 80vh; overflow: auto; padding: 6px;
   background: rgba(12,12,12,.97); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 18px 50px rgba(0,0,0,.55); }
 .atl-recent-pop[hidden] { display: none; }
 .atl-recent-row { display: grid; grid-template-columns: 10px 1fr; gap: 3px 10px; width: 100%; text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); cursor: pointer; font: 500 13px var(--font); }
@@ -1865,10 +1865,10 @@ html:root body .note.error { --lg-over: linear-gradient(var(--crit-bg), var(--cr
 html:root body .note.ok { --lg-over: linear-gradient(var(--good-bg), var(--good-bg)); color: var(--good-ink); }
 html:root body .hs-card { box-shadow: inset 0 1px 0 var(--lg-rim), 0 28px 50px -22px color-mix(in srgb, var(--void) 85%, transparent); color: var(--ink); }
 html:root body .hs-card h3 { color: var(--ink); }
-/* Popups that open inside another pane cannot see past it: they are nearly opaque instead */
+/* Popups that open inside another pane cannot see past it: they are opaque instead (text behind them would show through) */
 html:root body :is(.mp-pop, .atl-recent-pop, .agx-box) {
   border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent); border-radius: var(--lg-r-m);
-  background: linear-gradient(152deg, rgba(255,255,255,calc(var(--lg-sheen) * .6)), rgba(255,255,255,0) 50%), color-mix(in srgb, var(--surface) 94%, transparent);
+  background: linear-gradient(152deg, rgba(255,255,255,calc(var(--lg-sheen) * .6)), rgba(255,255,255,0) 50%), var(--surface);
   box-shadow: inset 0 1px 0 var(--lg-rim), 0 26px 46px -20px color-mix(in srgb, var(--void) 90%, transparent);
 }
 html:root body .agx-box { border-radius: var(--lg-r); color: var(--ink); }
@@ -5326,8 +5326,8 @@ function openAgentEditor(opts) {
   const radios = ['vault', 'web'].map(v => h('input', { type: 'radio', name: 'agx-access', value: v, checked: v === 'vault' }));
   const accessBox = h('fieldset', { class: 'agx-access' }, h('legend', { class: 'agx-l' }, tr('What may the agent do?')),
     h('label', null, radios[0], h('span', null, h('b', null, tr('Read the vault')), h('small', null, tr('Sees your notes (read only), does not go on the web.')))),
-    h('label', null, radios[1], h('span', null, h('b', null, tr('Search the web')), h('small', null, tr('Searches and reads web pages, does not see your notes.')))),
-    h('p', { class: 'agx-h' }, tr('Both together is deliberately not offered: a crafted web page could otherwise carry notes outside.')));
+    h('label', null, radios[1], h('span', null, h('b', null, tr('Vault and web')), h('small', null, tr('Sees your notes for context and also searches and reads web pages.')))),
+    h('p', { class: 'agx-h' }, tr('Every agent reads your notes. A web agent is told never to put note text into a search or a URL; a crafted web page could still try to make it.')));
   const tplBtn = h('button', { type: 'button', class: 'os-btn small', onclick: () => {
     const cur = instr.value.trim();
     instr.value = !cur || cur === AGENT_TEMPLATE.trim() ? AGENT_TEMPLATE : instr.value + (instr.value.endsWith('\n') ? '' : '\n') + '\n' + AGENT_TEMPLATE;
@@ -5708,7 +5708,7 @@ const AgentsView = {
       });
       pop.replaceChildren(...(kids.length ? kids : [h('p', { class: 'atl-recent-empty' }, tr('No conversations yet.'))]),
         h('button', { type: 'button', class: 'atl-recent-more', onclick: () => { close(); v.setTab('threads'); } }, tr('All conversations (left)')));
-      pop.hidden = false; btn.setAttribute('aria-expanded', 'true');
+      pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); fitPop(pop);
       document.addEventListener('pointerdown', onDoc, true);
       const f = pop.querySelector('button'); if (f) f.focus({ preventScroll: true });
     });
@@ -5737,7 +5737,7 @@ const AgentsView = {
       kids.push(h('div', { class: 'atl-hello' },
         h('p', { class: 'atl-eye' }, G.api ? tr('New conversation') : tr('File view')),
         h('h3', null, tr('What can I help with?')),
-        h('p', null, tr('Atlas replaces the chat: questions, web research, analysis, code, writing. The brain agents read your vault, all others search the web. None of them writes to your notes.')),
+        h('p', null, tr('Atlas replaces the chat: questions, web research, analysis, code, writing. Every agent reads your vault for context, the web agents also search the web. None of them writes to your notes.')),
         h('div', { class: 'atl-ex' }, ex.map(s => h('button', { type: 'button', class: 'chip', onclick: () => { v.text = s; v.input.value = s; v.growInput(); v.syncSend(); v.input.focus(); } }, trunc(s, 90))))));
     }
     const agents = v.agents();
@@ -9604,6 +9604,29 @@ const EFFORT_NAME = { '': trc('effort', 'Auto'), low: trc('effort', 'Low'), medi
 const EFFORT_DESC = { low: tr('Answer fast, minimal thinking.'), medium: tr('Balanced between speed and thoroughness.'), high: tr('Think it through before Claude answers.'),
   xhigh: tr('Very thorough. Takes longer and costs more.'), max: tr('As thorough as possible. Slowest and most expensive.') };
 let mpSeq = 0;
+// A popup that opens inside a pane with overflow: hidden (the Atlas chat) would be cut off at the pane's edge: on opening,
+// shrink it to the room the pane and the window leave and move it sideways back in. Scrolling panes are left alone.
+function fitPop(pop) {
+  const s = pop.style;
+  s.translate = s.maxWidth = s.maxHeight = s.overflowY = '';
+  let L = 0, T = 0, R = innerWidth, B = innerHeight;
+  for (let e = pop.parentElement; e && e !== document.body; e = e.parentElement) {
+    const cs = getComputedStyle(e);
+    if (!/hidden|clip/.test(cs.overflowX + ' ' + cs.overflowY)) continue;
+    const r = e.getBoundingClientRect();
+    L = Math.max(L, r.left); T = Math.max(T, r.top); R = Math.min(R, r.right); B = Math.min(B, r.bottom);
+  }
+  const pad = 8, anchor = pop.parentElement.getBoundingClientRect();
+  L += pad; T += pad; R -= pad; B -= pad;
+  s.maxWidth = Math.max(200, R - L) + 'px';
+  let p = pop.getBoundingClientRect();
+  const room = p.top >= anchor.top ? B - p.top : p.bottom - T;  // opens downwards or upwards
+  if (p.height > room) { s.maxHeight = Math.max(160, room) + 'px'; s.overflowY = 'auto'; }
+  p = pop.getBoundingClientRect();
+  const dx = p.left < L ? L - p.left : p.right > R ? Math.max(L - p.left, R - p.right) : 0;
+  if (dx) s.translate = Math.round(dx) + 'px 0';
+}
+addEventListener('resize', () => document.querySelectorAll('.mp:not(.mp-inline) > .mp-pop:not([hidden]), .atl-recent-pop:not([hidden])').forEach(fitPop));
 function modelEffortPicker(o) {
   const uid = 'mp' + (++mpSeq), levels = [''].concat(o.efforts || []), last = Math.max(1, levels.length - 1);
   const st = { model: o.model, effort: levels.includes(o.effort) ? o.effort : '', open: false };
@@ -9664,7 +9687,7 @@ function modelEffortPicker(o) {
   const onDoc = e => { if (!root.isConnected) { document.removeEventListener('pointerdown', onDoc, true); return; } if (!root.contains(e.target)) setOpen(false); };
   function setOpen(on, back) {
     if (o.inline || on === st.open) return;
-    st.open = on; pop.hidden = !on; trigger.setAttribute('aria-expanded', String(on));
+    st.open = on; pop.hidden = !on; trigger.setAttribute('aria-expanded', String(on)); if (on) fitPop(pop);
     if (on) { document.addEventListener('pointerdown', onDoc, true); const cur = opts.find(b => b.getAttribute('aria-checked') === 'true'); if (cur) cur.focus({ preventScroll: true }); }
     else { document.removeEventListener('pointerdown', onDoc, true); if (back) trigger.focus({ preventScroll: true }); }
   }

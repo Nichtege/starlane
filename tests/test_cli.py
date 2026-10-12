@@ -16,6 +16,14 @@ def run(cfg_path, *args):
 
 
 class CliTests(TempVaultCase):
+    def test_version_carries_the_program_name(self):
+        from aos import __version__
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), self.assertRaises(SystemExit) as ctx:
+            cli.main(["--version"])
+        self.assertEqual(ctx.exception.code, 0)
+        self.assertEqual(out.getvalue().strip(), f"starlane {__version__}")
+
     def test_digest_writes_files_and_is_idempotent(self):
         code, out = run(self.cfg_path, "digest")
         self.assertEqual(code, 0, out)

@@ -1,7 +1,8 @@
 # Shipped agents for Atlas in the dashboard (`aos serve`) and the terminal (`aos agent <id> "task"`).
 #
 # Every agent is `claude -p` running headless, without connectors and without a saved session (follow-up questions pass
-# the conversation along as text). Vault agents run in the vault folder, web agents in an empty sandbox folder. Writing, editing and shell access do not exist.
+# the conversation along as text). Every shipped agent reads the vault (read only) for context and runs in the vault folder;
+# the web agents also search the web. Writing, editing and shell access do not exist.
 #
 # Keys of an [[agent]] block:
 # id:               a-z, 0-9 and "-". `atlas`, `atlas-*` and `skill-*` are reserved.
@@ -12,10 +13,12 @@
 #                   when it picks agents, and every agent measures its own scope against it, so write it carefully:
 #                   "<what it delivers>; <vault or web>. For: <tasks>. Not for: <neighbours> (→ Other agent)."
 # model:            haiku | sonnet | opus | fable (default sonnet).
-# tools:            "Read", "Grep", "Glob" (read the vault) OR "WebSearch", "WebFetch" (the web). Both together only with
-#                   `mixed = true`: otherwise a prepared web page could tell a vault agent to carry note content out
-#                   through a URL or a search query. Bash, Write, Edit and every other tool are rejected when loading.
-# mixed:            true allows vault and web tools in one agent. Off for every shipped agent; think twice.
+# tools:            "Read", "Grep", "Glob" (read the vault) and/or "WebSearch", "WebFetch" (the web). Both together only
+#                   with `mixed = true`. Bash, Write, Edit and every other tool are rejected when loading.
+# mixed:            true allows vault and web tools in one agent. Set for every shipped web agent: they read your notes
+#                   for context. The runtime then tells them never to put note text into a search query or a URL, but a
+#                   prepared web page could still try to make one do it. For an agent that must never see your notes,
+#                   give it only "WebSearch", "WebFetch" and no `mixed`: it then runs in an empty sandbox folder.
 # prompt:           Markdown file with identity, working method and boundaries (relative to this file).
 # keywords:         lower-case word starts used as a fallback when Atlas' plan is unusable ("plan" also matches
 #                   "planning"; keywords shorter than 4 characters must match a whole word).
@@ -44,9 +47,10 @@ default = "assistant"
 id = "assistant"
 name = "Assistant"
 group = "General"
-description = "Answers general questions, researched on the web when facts may be dated; web search, no vault access. For: general questions, current news, product comparisons, ideas, everyday advice. Not for: your notes (→ Research), code (→ Coder), study help (→ Tutor)."
+description = "Answers general questions, researched on the web when facts may be dated; web search and notes. For: general questions, current news, product comparisons, ideas, everyday advice. Not for: your notes (→ Research), code (→ Coder), study help (→ Tutor)."
 model = "sonnet"
-tools = ["WebSearch", "WebFetch"]
+tools = ["Read", "Grep", "Glob", "WebSearch", "WebFetch"]
+mixed = true
 timeout_s = 480
 max_runs_per_day = 30
 prompt = "agents/assistant.md"
@@ -131,7 +135,8 @@ name = "Data Analyst"
 group = "Analysis"
 description = "Interprets pasted numbers and tables: patterns, trends, outliers and caveats; web search for benchmarks. For: analysing a table, comparing KPIs, choosing a chart, data quality checks. Not for: analysis code (→ Coder), numbers in your notes (→ Research)."
 model = "sonnet"
-tools = ["WebSearch", "WebFetch"]
+tools = ["Read", "Grep", "Glob", "WebSearch", "WebFetch"]
+mixed = true
 timeout_s = 480
 max_runs_per_day = 30
 prompt = "agents/data-analyst.md"
@@ -148,7 +153,8 @@ name = "Coder"
 group = "Code"
 description = "Writes and explains code as text to copy, checks current docs on the web; never runs anything. For: functions and scripts, API usage, regex, explaining code, debugging from an error. Not for: interpreting results (→ Data Analyst), learning basics (→ Tutor)."
 model = "sonnet"
-tools = ["WebSearch", "WebFetch"]
+tools = ["Read", "Grep", "Glob", "WebSearch", "WebFetch"]
+mixed = true
 timeout_s = 480
 max_runs_per_day = 30
 prompt = "agents/coder.md"
@@ -165,7 +171,8 @@ name = "Tutor"
 group = "Learning"
 description = "Explains a topic in small steps with examples and practice questions; web search for reliable material. For: understanding a topic, exam preparation, practice questions, study plans, vocabulary. Not for: your own notes (→ Research), writing code (→ Coder)."
 model = "sonnet"
-tools = ["WebSearch", "WebFetch"]
+tools = ["Read", "Grep", "Glob", "WebSearch", "WebFetch"]
+mixed = true
 timeout_s = 480
 max_runs_per_day = 30
 prompt = "agents/tutor.md"
