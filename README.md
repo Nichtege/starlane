@@ -35,7 +35,7 @@ dashboard need nothing else.
 ```bash
 # 0. First download this repository (or the ZIP from the green "Code" button on GitHub, unpacked).
 #    Any folder except ~/starlane, which `aos setup` makes: hence the name starlane-src.
-git clone https://github.com/wvmjprmdzj-beep/starlane.git starlane-src
+git clone https://github.com/Nichtege/starlane.git starlane-src
 cd starlane-src               # every step below runs from a terminal opened here (until step 1 moves you)
 python -m pip install .       # adds the `aos` command; no dependencies. macOS / Linux: python3 -m pip install .
 
