@@ -38,7 +38,10 @@ Voraussetzungen: Python 3.11 oder neuer (prüf das mit `python3 --version`; unte
 Dashboard brauchen sonst nichts.
 
 ```bash
-# 0. Code holen (klonen oder herunterladen, in einen beliebigen Ordner außer ~/starlane, den `aos setup` anlegt), dort ein Terminal öffnen und installieren
+# 0. Zuerst dieses Repository herunterladen (oder das ZIP über den grünen Knopf „Code“ auf GitHub, entpackt).
+#    Jeder Ordner außer ~/starlane, den `aos setup` anlegt: deshalb der Name starlane-src.
+git clone https://github.com/wvmjprmdzj-beep/starlane.git starlane-src
+cd starlane-src               # alle Schritte unten laufen in einem Terminal, das hier geöffnet ist (bis Schritt 1 dich weiterschickt)
 python -m pip install .       # fügt den Befehl `aos` hinzu; keine Abhängigkeiten. macOS / Linux: python3 -m pip install .
 
 # 1. Ein Ordner für deine Einrichtung: ~/starlane (oder der Ordner in $AOS_HOME). Überschreibt nie eine Datei.
@@ -58,7 +61,7 @@ aos serve
 aos agent research "Welche aktiven Projekte habe ich und wann sind sie fällig?"
 ```
 
-**Lieber Claude Code machen lassen?** Öffne `claude` im Ordner dieses Repositorys und füg ein:
+**Lieber Claude Code machen lassen?** Lade zuerst das Repository herunter (Schritt 0), öffne `claude` in diesem Ordner und füg ein:
 
 > Installier Starlane aus diesem Ordner mit `python -m pip install .` (nimm pipx oder eine virtuelle Umgebung, wenn pip ablehnt), führ `aos setup` aus, setz in `~/starlane/aos.toml` unter `[user]` `ui_language = "de"`, dann `aos doctor` und `aos digest` aus `~/starlane`. Sag mir bei jedem Schritt, ob er geklappt hat, starte `aos serve` und gib mir den Link. Ändere nichts außerhalb dieses Ordners und `~/starlane`.
 
