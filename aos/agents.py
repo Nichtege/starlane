@@ -716,7 +716,7 @@ PLAN_PROMPT = """You are Atlas, the coordinator for %(user)s. Think first, then 
 Reply ONLY with JSON, without any text around it, in this order:
 {"reasoning":"<2 to 3 sentences: What is this really about? Which parts does the request have? Which field does each part need and why?>","tasks":[{"agent":"<id>","task":"<sub-task>"}]}
 - Decide by the CONTENT of the request, never by single words: a word can appear in an unrelated context (e.g. "agentic" is not about genetics).
-- Choose a specialist only if their field really matches that part of the request. Questions about Agentic OS, Atlas, this dashboard or how to use it do not belong to fields like health, biology or law, but go to "%(default)s".
+- Choose a specialist only if their field really matches that part of the request. Questions about Starlane, Atlas, this dashboard or how to use it do not belong to fields like health, biology or law, but go to "%(default)s".
 - 1 to %(fanout)d entries. If the request has several distinct parts or benefits from different fields, use several specialists AT THE SAME TIME (each at most once, each gets only its own part).
 - Plan only the first round. If a step needs the result of another, it goes into a later round: you review the reports after every round and start the next one if needed (up to %(rounds)d rounds).
 - "task" must be understandable without the history: the specialist sees only this text. Copy numbers, names, deadlines and constraints verbatim, write in %(language)s, leave out anything unnecessary.

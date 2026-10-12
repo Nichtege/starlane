@@ -884,7 +884,7 @@ body.dragging-w { -webkit-user-select: none; user-select: none; cursor: grabbing
 
 
 /* =====================================================================
-   OS look: deep space + galactic gold, angular, mono labels (rework modelled on "Agentic OS")
+   OS look: deep space + galactic gold, angular, mono labels (rework modelled on "Starlane")
    Comes after all other rules and deliberately overrides colours and radii.
    ===================================================================== */
 :root {
@@ -4035,7 +4035,7 @@ function stageTitle() {
   const logo = svgEl('svg', { class: 'hs-logo', width: 22, height: 22, viewBox: '0 0 26 26', 'aria-hidden': 'true' });
   logo.append(svgEl('polygon', { points: '13,1.5 23,7.25 23,18.75 13,24.5 3,18.75 3,7.25', fill: 'none', stroke: 'currentColor', 'stroke-width': 2.2, 'stroke-linejoin': 'round' }), svgEl('circle', { cx: 13, cy: 13, r: 3, fill: 'currentColor' }));
   return h('div', { class: 'hs-title' },
-    h('h2', { class: 'hs-name' }, logo, 'Brain ', h('em', null, 'Agentic OS')),
+    h('h2', { class: 'hs-name' }, logo, 'Brain ', h('em', null, 'Starlane')),
     h('p', { class: 'hs-by' }, bits.join(' | ')));
 }
 

@@ -1,6 +1,6 @@
 # Security policy
 
-Agentic OS is a local, single-user tool. It has no hosted service and no accounts. The threat model, the guarantees it
+Starlane is a local, single-user tool. It has no hosted service and no accounts. The threat model, the guarantees it
 tries to keep and its honest limits are described in [docs/security.md](docs/security.md).
 
 ## Reporting a vulnerability

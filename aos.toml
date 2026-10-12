@@ -1,4 +1,4 @@
-# Agentic OS configuration. Write paths with "/", also on Windows.
+# Starlane configuration. Write paths with "/", also on Windows.
 # Every key is optional; the values below are the defaults unless marked as an example.
 # Environment overrides: AOS_CONFIG (this file), AOS_VAULT, AOS_DATA, AOS_MACHINE, AOS_USER, AOS_LANGUAGE.
 

@@ -39,7 +39,7 @@ CACHE_SECONDS = 5
 MAX_BODY = 32 * 1024  # custom agents: up to 6000 characters of instructions (UTF-8) plus fields
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{0,40}$")
 PAGE_PATHS = ("/", "/index.html", "/dashboard.html")
-FORBIDDEN_PAGE = (b"<!doctype html><meta charset=\"utf-8\"><title>Agentic OS</title>"
+FORBIDDEN_PAGE = (b"<!doctype html><meta charset=\"utf-8\"><title>Starlane</title>"
                   b"<p>This address needs the link that <code>aos serve</code> printed in the terminal "
                   b"(<code>http://127.0.0.1:&lt;port&gt;/?k=...</code>). Open that link, or restart <code>aos serve</code>.</p>")
 

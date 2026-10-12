@@ -19,7 +19,7 @@ from .scheduler import LOCK_STALE_S
 # the lock file are left behind. So the limit is as long as the lock file stays valid.
 TICK_LIMIT_MIN = LOCK_STALE_S // 60
 
-TASK_NAME = "Agentic OS tick"
+TASK_NAME = "Starlane tick"
 
 
 def _is_windows() -> bool:
@@ -104,7 +104,7 @@ $ErrorActionPreference = 'Stop'
 $action = New-ScheduledTaskAction -Execute {_ps_quote(_pythonw())} -Argument {_ps_quote(chr(34) + str(script) + chr(34))} -WorkingDirectory {_ps_quote(str(root))}
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes {minutes})
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes {TICK_LIMIT_MIN}) -Hidden
-Register-ScheduledTask -TaskName {_ps_quote(TASK_NAME)} -Action $action -Trigger $trigger -Settings $settings -Description 'Agentic OS tick: runs due routines (aos tick). Remove with: {aos_cmd('python -m aos uninstall-task')}' -Force | Out-Null
+Register-ScheduledTask -TaskName {_ps_quote(TASK_NAME)} -Action $action -Trigger $trigger -Settings $settings -Description 'Starlane tick: runs due routines (aos tick). Remove with: {aos_cmd('python -m aos uninstall-task')}' -Force | Out-Null
 'registered'
 """
     proc = _powershell(ps)

@@ -1,6 +1,6 @@
 # Vault conventions
 
-Agentic OS reads a folder of Markdown notes (an Obsidian-style *vault*). To build the digest, the vault check and the
+Starlane reads a folder of Markdown notes (an Obsidian-style *vault*). To build the digest, the vault check and the
 dashboard it has to know a few things about how that folder is organised: which frontmatter key holds a note's type,
 what a project status may be, where week notes live, what the heading above your weekly goal is called.
 

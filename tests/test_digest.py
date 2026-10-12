@@ -9,7 +9,7 @@ from tests.helpers import TempVaultCase
 
 TODAY = date(2026, 10, 9)
 NOW = datetime(2026, 10, 9, 6, 30)
-PROJECT_NOTE = "---\ntype: project\ncreated: 2026-10-09\nstatus: active\n---\n# Agentic OS\n"
+PROJECT_NOTE = "---\ntype: project\ncreated: 2026-10-09\nstatus: active\n---\n# Starlane\n"
 
 
 class DigestTests(TempVaultCase):

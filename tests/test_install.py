@@ -124,7 +124,7 @@ class InstalledMode(unittest.TestCase):
     def test_the_folder_comes_from_aos_home_or_the_default(self):
         self.assertEqual(config.home_dir(), (self.tmp / "home").resolve())
         del os.environ["AOS_HOME"]
-        self.assertEqual(config.home_dir(), Path(os.path.expanduser("~/agentic-os")).resolve())
+        self.assertEqual(config.home_dir(), Path(os.path.expanduser("~/starlane")).resolve())
 
     def test_config_is_read_from_the_users_folder(self):
         self.installed()
@@ -165,7 +165,7 @@ class InstalledMode(unittest.TestCase):
         del os.environ["AOS_HOME"]
         for var in ("HOME", "USERPROFILE"):                      # "~" is the scratch folder
             os.environ[var] = str(self.tmp)
-        mine = self.tmp / "agentic-os"
+        mine = self.tmp / "starlane"
         (mine / "aos").mkdir(parents=True)
         (mine / "aos" / "__init__.py").write_text("", encoding="utf-8")
         (mine / "aos.toml").write_text("# a working project" + chr(10), encoding="utf-8")

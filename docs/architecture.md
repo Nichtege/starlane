@@ -1,9 +1,9 @@
 # Architecture
 
-Agentic OS is a small operating layer around two things you already have: a folder of Markdown notes (the *vault*) and Claude Code running headless (`claude -p`). It reads the vault, runs routines on a schedule, lets read-only agents answer questions, and shows everything in a local dashboard. This page is for contributors: how it is built, why, and where to find things.
+Starlane is a small operating layer around two things you already have: a folder of Markdown notes (the *vault*) and Claude Code running headless (`claude -p`). It reads the vault, runs routines on a schedule, lets read-only agents answer questions, and shows everything in a local dashboard. This page is for contributors: how it is built, why, and where to find things.
 
 ## Design principles
-- **Standard library only.** Python 3.11+, no dependencies. It is written for Windows, macOS and Linux, on a laptop or a small server. Day to day it has been used on Windows; it has not been run on a real macOS or Linux machine yet, so the POSIX-only parts (process groups, the cron line, Unicode file names) are tested with the platform patched. Reports from those systems are welcome.
+- **Standard library only.** Python 3.11+, no dependencies. It is written for Windows, macOS and Linux, on a laptop or a small server. Day to day it has been used on Windows. The test suite and a clean `pip install` run on Linux, macOS and Windows (Python 3.11 to 3.13) in GitHub Actions on every push; the POSIX-only parts (process groups, the cron line, Unicode file names) are also tested with the platform patched. The dashboard and the agents (which need `claude`) have only been tried by hand on Windows, so reports from macOS and Linux are welcome.
 - **The vault is the truth.** Everything generated lands in `AI/Digest/` (inside the vault) or `data/` (inside the project). The system never changes or deletes a note of yours.
 - **Show, don't store.** The dashboard reads files and renders them; it keeps no database of its own.
 - **Read-only by construction.** Routines name commands from a whitelist, agents and skills get read and search tools only, the server listens on `127.0.0.1` only. Every routine and every agent run has time, daily and failure limits. See [security.md](security.md).
@@ -23,7 +23,7 @@ A fifth concern, **skills**, sits across Agent and Pulse: a skill is a recipe (`
 ## Module map
 | Module | Responsibility |
 |---|---|
-| `aos/config.py` | Loads `aos.toml` (or `AOS_CONFIG`), resolves paths, holds `Config` and `Conventions`. Decides between *checkout* (the project folder is the code folder) and *installed* (a wheel: the user's folder `$AOS_HOME`, default `~/agentic-os`, is the project root). |
+| `aos/config.py` | Loads `aos.toml` (or `AOS_CONFIG`), resolves paths, holds `Config` and `Conventions`. Decides between *checkout* (the project folder is the code folder) and *installed* (a wheel: the user's folder `$AOS_HOME`, default `~/starlane`, is the project root). |
 | `aos/shipped.py` | The list of starter files (`aos.toml`, routines, agents, skills, docs, the demo vault) with what never ships. `aos setup` copies them, never overwriting; `setup.py` bundles the same list into the wheel as `aos/_shipped`, and `MANIFEST.in` mirrors it for the sdist. |
 | `aos/vault.py` | Walks the vault, parses frontmatter and wikilinks, builds the link index. Never writes. |
 | `aos/dates.py` | Date parsing (ISO, `DD.MM.YYYY`, weekday forms) and ISO week names. |

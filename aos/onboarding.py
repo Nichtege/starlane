@@ -89,7 +89,7 @@ def _skill_scheduled(cfg: Config) -> bool:
 STAGES: tuple[Stage, ...] = (
     Stage(
         id="vault",
-        title="Point Agentic OS at your own notes",
+        title="Point Starlane at your own notes",
         why="Everything reads one folder of Markdown notes, the vault. It ships pointing at the demo vault in examples/vault, "
             "so everything works right away; switch to your own notes when you are ready.",
         done=_has_notes,
@@ -100,7 +100,7 @@ STAGES: tuple[Stage, ...] = (
             'Open aos.toml and set `[vault] path` to your folder, e.g. "~/notes" (use "/" also on Windows; a relative path is relative to aos.toml).',
             "Run `python -m aos doctor`: \"Vault exists\" and \"Notes read\" should show a check mark.",
         ),
-        prompt="""Help me switch Agentic OS from the bundled demo vault (examples/vault) to my own notes.
+        prompt="""Help me switch Starlane from the bundled demo vault (examples/vault) to my own notes.
 First read README.md, docs/vault-conventions.md and aos.toml in this folder.
 1. Ask me whether I already have a folder of Markdown notes (an Obsidian vault) or want a new starter vault, and where it is or should go.
 2. Existing vault: propose the change to `[vault] path` in aos.toml. New vault: after I confirm the folder, run `python -m aos init <folder>` (it only creates files that do not exist yet), then propose the same aos.toml change. Remind me that `aos digest` writes into the digest folder of that vault (`[digest] dir`, default AI/Digest).
@@ -112,7 +112,7 @@ Only read notes as far as needed to tell whether the folder is a vault; never ch
     Stage(
         id="obsidian",
         title="Open the vault in Obsidian",
-        why="Obsidian is where you read and write the notes; Agentic OS works next to it and links straight into it.",
+        why="Obsidian is where you read and write the notes; Starlane works next to it and links straight into it.",
         done=_obsidian,
         steps=(
             "Install Obsidian from obsidian.md (free) and start it.",
@@ -122,7 +122,7 @@ Only read notes as far as needed to tell whether the folder is a vault; never ch
             "Core plugins: keep Backlinks and Graph view on; Daily notes is optional.",
             "Set `[vault] name` in aos.toml only if Obsidian shows a different vault name than the folder name.",
         ),
-        prompt="""Guide me through opening my Agentic OS vault in Obsidian. You cannot click in Obsidian for me: tell me what to click and check the result.
+        prompt="""Guide me through opening my Starlane vault in Obsidian. You cannot click in Obsidian for me: tell me what to click and check the result.
 First read README.md, docs/vault-conventions.md and aos.toml in this folder.
 1. Tell me the vault folder from `[vault] path` in aos.toml (with ~ expanded) and walk me through installing Obsidian and "Open folder as vault" with that folder.
 2. Recommend these minimal settings and explain each in one line: Wikilinks on, new notes in the Inbox folder, an attachments folder, core plugins Backlinks and Graph view on, Daily notes optional.
@@ -138,12 +138,12 @@ Verify: the vault folder now contains a `.obsidian` folder (only check that it e
         steps=(
             "Install Claude Code (see claude.com/claude-code) so that `claude` is on your PATH.",
             "Run `claude` once in a terminal and log in.",
-            "Windows: Agentic OS needs the real claude.exe, not a .cmd or .bat wrapper.",
+            "Windows: Starlane needs the real claude.exe, not a .cmd or .bat wrapper.",
             "Run `python -m aos doctor`: the line \"claude CLI\" should show a check mark.",
         ),
-        prompt="""Check that Claude Code is set up the way Agentic OS needs it.
+        prompt="""Check that Claude Code is set up the way Starlane needs it.
 First read README.md and docs/security.md (the sections on agents) in this folder.
-1. Run `python -m aos doctor` and read the line "claude CLI". Agentic OS only searches absolute PATH folders, never the current folder or the vault, and rejects .cmd/.bat wrappers on Windows.
+1. Run `python -m aos doctor` and read the line "claude CLI". Starlane only searches absolute PATH folders, never the current folder or the vault, and rejects .cmd/.bat wrappers on Windows.
 2. If it is not found or rejected, tell me how to fix my PATH or installation on my operating system; do not change system settings yourself.
 3. Explain in two sentences what agents send to Anthropic when they run (see docs/security.md).
 Verify: `python -m aos doctor` shows the claude line with a check mark.
@@ -159,7 +159,7 @@ Verify: `python -m aos doctor` shows the claude line with a check mark.
             "Open `AI/Digest/latest.md` (or your `[digest] dir`) in Obsidian.",
             "Run `python -m aos mapcheck -v` to see the vault check findings behind the digest.",
         ),
-        prompt="""Help me create and understand my first Agentic OS digest.
+        prompt="""Help me create and understand my first Starlane digest.
 First read README.md, docs/vault-conventions.md and aos.toml in this folder.
 1. Run `python -m aos doctor`, then `python -m aos digest`, then `python -m aos mapcheck -v`.
 2. Read the generated latest.md and vault-check.md in the digest folder (`[digest] dir` in aos.toml, default AI/Digest) and explain to me what each section means.
@@ -179,7 +179,7 @@ Verify: latest.md exists in the digest folder.
             "Artifacts: everything the system produced. Rings, Links and Timeline: how your notes connect. Health: the vault check.",
             "Stop the server with Ctrl+C. It listens on 127.0.0.1 only.",
         ),
-        prompt="""Give me a short tour of the Agentic OS dashboard. Do not start the server yourself: I run it in my own terminal.
+        prompt="""Give me a short tour of the Starlane dashboard. Do not start the server yourself: I run it in my own terminal.
 First read README.md, docs/architecture.md and the "Dashboard server" section of docs/security.md in this folder.
 1. Tell me to run `python -m aos serve` (in a clone on Windows, start-dashboard.bat starts the clone's own setup) and to open the link it prints.
 2. Explain each view in one or two lines: OS (the home screen), Second brain, Atlas, skills, artifacts, rings, links, timeline, health.
@@ -201,7 +201,7 @@ First read README.md, docs/architecture.md and the "Dashboard server" section of
             "`python -m aos doctor` and `python -m aos status`.",
             "Try one now with `python -m aos run <id>`. A blocked routine is released with `python -m aos unblock <id>`.",
         ),
-        prompt="""Help me set up the Agentic OS routines and my first automations.
+        prompt="""Help me set up the Starlane routines and my first automations.
 First read README.md, routines.toml, the "Routines" section of docs/security.md and the "Scheduling a skill" section of docs/skills.md in this folder.
 1. Run `python -m aos status` and explain which routines exist, which are on, and what the off-by-default ones (git-pull, claude-weekly-review, weekly-plan-monday) would do, including which of them call Claude and cost money.
 2. Explain time limit, daily cap and circuit breaker in one line each.
@@ -221,7 +221,7 @@ Verify: doctor reports routines.toml valid, and status lists the routines I chos
             "Run `python -m aos agents` to see all agents and their daily limits.",
             "Run `python -m aos jobs` to see past answers, `python -m aos spend` for what runs cost.",
         ),
-        prompt="""Help me give my first task to an Agentic OS agent.
+        prompt="""Help me give my first task to a Starlane agent.
 First read README.md and docs/agents.md in this folder.
 1. Run `python -m aos agents` and explain the shipped agents in one line each, and which ones read my notes and which search the web.
 2. Suggest three first tasks that fit my vault, each with the agent it would go to. Ask me which one to run; agent runs call Claude and cost money.
@@ -240,7 +240,7 @@ Verify: `python -m aos jobs` lists the finished job.
             "Write the description as: what it delivers; vault or web. For: ... Not for: ... (→ other agent). See docs/agents.md.",
             "Your agents go to agents.local.toml and agents/local/; delete one with `python -m aos agent-rm <id>`.",
         ),
-        prompt="""Help me design and create my own Agentic OS agent.
+        prompt="""Help me design and create my own Starlane agent.
 First read README.md, docs/agents.md (especially "Writing a great description" and "Creating your own agents") and agents.toml in this folder.
 1. Ask me what the agent should do for me, with two or three real example tasks. Then decide with me: vault access (reads my notes) or web access (web search), never both.
 2. Propose: name, description in the pattern from docs/agents.md (at most 280 characters, with "Not for" neighbours), group, model, up to 12 keywords, up to 4 example tasks, and instructions with the sections Identity, Working method, Boundaries, Output (`python -m aos agent-new --template` prints a template).
@@ -259,7 +259,7 @@ Verify: agents.local.toml exists and `python -m aos agents` lists the agent as c
             "Read docs/vault-conventions.md and uncomment in `[conventions]` in aos.toml only what differs.",
             "Run `python -m aos doctor` and `python -m aos mapcheck` again and compare the counts.",
         ),
-        prompt="""Help me adapt Agentic OS to the conventions of my vault.
+        prompt="""Help me adapt Starlane to the conventions of my vault.
 First read README.md, docs/vault-conventions.md and aos.toml in this folder.
 1. Run `python -m aos mapcheck -v` and group the findings by kind.
 2. Inspect my vault read-only: its top-level folders, the frontmatter keys and values most notes use, and the headings in week notes. Read only as many notes as you need; never change, move or rename a note.
@@ -278,7 +278,7 @@ Verify: doctor loads aos.toml without errors and the vault check reports fewer f
             "Schedule one: a routine with `command = \"skill\"` in routines.toml (weekly-plan-monday is ready, set `enabled = true`).",
             "Your own skill: a folder skills/<id>/ with a SKILL.md (frontmatter name, description, model, effort; then steps and boundaries). See docs/skills.md.",
         ),
-        prompt="""Help me use Agentic OS skills and create one of my own.
+        prompt="""Help me use Starlane skills and create one of my own.
 First read README.md, docs/skills.md and the folders in skills/ in this folder.
 1. Run `python -m aos skills` and explain each shipped skill in one line. Ask before running one, since skill runs cost money.
 2. Ask me which procedure I repeat often enough to write down. Propose a new skill: skills/<id>/SKILL.md with frontmatter (name, description, model, effort), numbered steps, boundaries, and a references/checklist.md, following "Writing a good skill" in docs/skills.md. The skill must stay read-only: its output is text I adopt myself.

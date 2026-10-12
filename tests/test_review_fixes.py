@@ -120,7 +120,7 @@ class SchedulerFixes(TempVaultCase):
 
 
 class DigestFixes(TempVaultCase):
-    extra = {"Projects/agentic-os.md": "---\ntype: project\ncreated: 2026-10-09\nstatus: active\n---\n# Agentic OS\n"}
+    extra = {"Projects/agentic-os.md": "---\ntype: project\ncreated: 2026-10-09\nstatus: active\n---\n# Starlane\n"}
 
     def scan(self):
         return Vault.scan(self.vault_dir, self.cfg.ignore)

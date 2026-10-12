@@ -88,8 +88,15 @@ def _key(name: str) -> str:
 
 
 def _is_link(path: Path) -> bool:
+    if path.is_symlink():
+        return True
     isjunction = getattr(os.path, "isjunction", None)  # Python 3.12+
-    return path.is_symlink() or bool(isjunction and isjunction(path))
+    if isjunction:
+        return bool(isjunction(path))
+    try:  # Python 3.11 on Windows: a junction is a reparse point that is not a symlink
+        return bool(os.lstat(path).st_file_attributes & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+    except (AttributeError, OSError):
+        return False
 
 
 def _scalar(value: str):

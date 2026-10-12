@@ -13,7 +13,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # Installed mode: a wheel or sdist install carries the starter files in aos/_shipped (built by setup.py) and there is no
 # aos.toml next to the package. Never true in a checkout or an editable install. Then the user's own folder ($AOS_HOME,
-# default ~/agentic-os; made by `aos setup`) plays the role of the project root.
+# default ~/starlane; made by `aos setup`) plays the role of the project root.
 SHIPPED_DIR = Path(__file__).resolve().parent / "_shipped"
 
 
@@ -26,7 +26,7 @@ INSTALLED = _is_installed(SHIPPED_DIR, PROJECT_ROOT)
 
 def home_dir() -> Path:
     """The user's folder in installed mode: aos.toml, routines.toml, agents, skills and data live here."""
-    return Path(os.path.expanduser(os.environ.get("AOS_HOME") or "~/agentic-os")).resolve()
+    return Path(os.path.expanduser(os.environ.get("AOS_HOME") or "~/starlane")).resolve()
 
 
 def default_root() -> Path:
@@ -34,7 +34,7 @@ def default_root() -> Path:
 
 
 def home_is_checkout() -> bool:
-    """Installed mode, $AOS_HOME not set, and ~/agentic-os is itself a copy of the code (it holds the `aos` package).
+    """Installed mode, $AOS_HOME not set, and ~/starlane is itself a copy of the code (it holds the `aos` package).
 
     That is somebody's working project, not a folder `aos setup` made: do not adopt it silently (digests, routines and the
     state file in it would be rewritten by this install's code). Naming the folder (AOS_HOME, --config, a folder argument) is fine."""

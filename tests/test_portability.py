@@ -163,7 +163,7 @@ class Crontab(TempVaultCase):
         return dataclasses.replace(self.cfg, project_root=Path(root), data_dir=Path(root) / "data")
 
     def test_the_lines_are_quoted_complete_and_find_claude(self):
-        cfg = self.cfg_in("/home/me/My Notes/agentic os")
+        cfg = self.cfg_in("/home/me/My Notes/starlane")
         with mock.patch.object(tasksched, "find_claude", return_value=("/opt/tools/claude", "")):
             path_line, tick_line = tasksched.crontab_lines(cfg, 5)
         q = shlex.quote

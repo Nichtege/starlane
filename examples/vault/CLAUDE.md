@@ -2,7 +2,7 @@
 
 ## What this vault is
 
-A small, fictional demo vault that ships with Agentic OS. Its owner is a made-up freelance illustrator who is building
+A small, fictional demo vault that ships with Starlane. Its owner is a made-up freelance illustrator who is building
 two raised vegetable beds, learning Spanish and drawing a zine called "Small Greens". None of it is about a real person.
 The vault is set in week 2026-W41 (Monday 5 to Sunday 11 October 2026); read dates relative to that week.
 

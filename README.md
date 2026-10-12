@@ -1,4 +1,4 @@
-# Agentic OS
+# Starlane
 
 A small operating system around a folder of Markdown notes (an Obsidian-style *vault*) and
 [Claude Code](https://claude.com/claude-code). It checks your notes, writes you a daily digest, runs scheduled
@@ -10,6 +10,8 @@ is a git checkout). Agents can read; they cannot write, run commands or push any
 > **Honest note.** This is a personal tool made public, not a framework and not production software. It is stdlib-only
 > Python, a single-user, single-machine design, and it is shared **as is**, without warranty (see [LICENSE](LICENSE)).
 > Read [docs/security.md](docs/security.md) before you point it at notes you care about.
+
+The command is `starlane` (the short form `aos` does the same, and so does `python -m aos`; the guides use the latter).
 
 ## What you get
 
@@ -31,12 +33,12 @@ and some long-term-support systems still ship 3.10). For agents and skills also 
 dashboard need nothing else.
 
 ```bash
-# 0. Get the code (clone or download it into any folder except ~/agentic-os, which `aos setup` makes), open a terminal in it and install it
+# 0. Get the code (clone or download it into any folder except ~/starlane, which `aos setup` makes), open a terminal in it and install it
 python -m pip install .       # adds the `aos` command; no dependencies. macOS / Linux: python3 -m pip install .
 
-# 1. One folder for your setup: ~/agentic-os (or the folder in $AOS_HOME). Never overwrites a file.
+# 1. One folder for your setup: ~/starlane (or the folder in $AOS_HOME). Never overwrites a file.
 aos setup                     # config, routines, agents, skills, docs and the demo vault in examples/vault
-cd ~/agentic-os               # work from there; open `claude` there for the guided prompts
+cd ~/starlane               # work from there; open `claude` there for the guided prompts
 
 # 2. Self-test, then your first digest and vault check
 aos doctor
@@ -51,7 +53,7 @@ aos agent research "What are my active projects and when are they due?"
 
 **Rather have Claude Code do it?** Open `claude` in the folder of this repository and paste:
 
-> Install Agentic OS from this folder with `python -m pip install .` (use pipx or a virtual environment if pip refuses it), run `aos setup`, then `aos doctor` and `aos digest` from `~/agentic-os`. Tell me for each step whether it worked, start `aos serve` and give me the link. Do not change anything outside this folder and `~/agentic-os`.
+> Install Starlane from this folder with `python -m pip install .` (use pipx or a virtual environment if pip refuses it), run `aos setup`, then `aos doctor` and `aos digest` from `~/starlane`. Tell me for each step whether it worked, start `aos serve` and give me the link. Do not change anything outside this folder and `~/starlane`.
 
 Good to know:
 
@@ -63,7 +65,7 @@ Good to know:
   `python -m aos ...` with the same Python (every command works that way).
 - **Working on the code, or just looking?** Skip the install and run from the clone: `python -m aos doctor` (and the
   other commands, `python3 -m aos` on macOS and Linux) uses the `aos.toml` in that folder. That is a different setup
-  than `~/agentic-os`: pick one and stay with it. The guides write commands as `python -m aos ...`; after `pip install`
+  than `~/starlane`: pick one and stay with it. The guides write commands as `python -m aos ...`; after `pip install`
   they are `aos ...` (and `aos next` prints them that way).
 - **Safe to repeat.** `aos setup` only adds files that are missing and never changes one that exists, edited or not, so
   running it again after `pip install --upgrade .` cannot lose anything. For the same reason it does not update files
@@ -77,13 +79,13 @@ The demo vault belongs to a fictional illustrator who gardens, learns Spanish an
 the demo getting old, not a broken setup. Its `CLAUDE.md` lists more questions it can answer. You can also open **Atlas** in the dashboard and ask.
 
 `aos install-task` schedules the routines (every 5 minutes, only routines that are due run). On Windows it registers one
-task named "Agentic OS tick" for your user (running it from another folder replaces it; `aos uninstall-task` removes
+task named "Starlane tick" for your user (running it from another folder replaces it; `aos uninstall-task` removes
 it); on macOS and Linux it changes nothing and prints two lines for `crontab -e`. In a clone on Windows,
 `start-dashboard.bat` also starts the dashboard, with the clone's own setup.
 
 ### Use your own notes
 
-When you are ready, point Agentic OS at your own folder of Markdown notes:
+When you are ready, point Starlane at your own folder of Markdown notes:
 
 - Existing notes (an Obsidian vault works as is): set `[vault] path` in `aos.toml` to that folder. Use `/` also on
   Windows; a relative path is relative to `aos.toml`.

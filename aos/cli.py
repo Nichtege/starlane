@@ -75,7 +75,7 @@ def cmd_setup(cfg: Config, args) -> int:
     from . import shipped
 
     if not args.folder and not INSTALLED:
-        _out("Name the folder to set up, for example: python -m aos setup ~/agentic-os")
+        _out("Name the folder to set up, for example: python -m aos setup ~/starlane")
         return 2
     target = Path(args.folder).expanduser().resolve() if args.folder else home_dir()
     source = SHIPPED_DIR if INSTALLED else PROJECT_ROOT
@@ -84,10 +84,10 @@ def cmd_setup(cfg: Config, args) -> int:
         return 2
     if (target / ".obsidian").is_dir() and not (target / "aos.toml").exists():
         _out(f"{target} is an Obsidian vault: setup adds about fifty files of its own and would put them among your notes. "
-             f"Name a new or empty folder (for example ~/agentic-os) and set [vault] path in its aos.toml to your notes.")
+             f"Name a new or empty folder (for example ~/starlane) and set [vault] path in its aos.toml to your notes.")
         return 2
     copied, skipped = shipped.copy(source, target)
-    _out(f"Agentic OS folder: {target}  ({len(copied)} files added, {len(skipped)} kept as they are)")
+    _out(f"Starlane folder: {target}  ({len(copied)} files added, {len(skipped)} kept as they are)")
     cfg_opt = ""
     if not INSTALLED or target != home_dir():
         conf = str(target / "aos.toml")
@@ -500,7 +500,7 @@ def cmd_doctor(cfg: Config, args) -> int:
             problems += 1
         _out(f" {mark} {label}" + (f": {detail}" if detail else ""))
 
-    _out(f"Agentic OS {__version__} · Python {sys.version.split()[0]} · machine {cfg.machine}")
+    _out(f"Starlane {__version__} · Python {sys.version.split()[0]} · machine {cfg.machine}")
     check(sys.version_info >= (3, 11), "Python >= 3.11")
     check(cfg.config_file is not None, "aos.toml found", str(cfg.config_file or "defaults"), fatal=False)
     check(cfg.vault.is_dir(), "Vault exists", str(cfg.vault))
@@ -612,15 +612,15 @@ def cmd_next(cfg: Config, args) -> int:
 
 # --- Parser ----------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="aos", description="Agentic OS for a Markdown vault and Claude Code")
-    p.add_argument("--config", help="path to aos.toml (default: $AOS_CONFIG; after `pip install` the aos.toml in $AOS_HOME or ~/agentic-os; "
+    p = argparse.ArgumentParser(prog="starlane", description="Starlane for a Markdown vault and Claude Code")
+    p.add_argument("--config", help="path to aos.toml (default: $AOS_CONFIG; after `pip install` the aos.toml in $AOS_HOME or ~/starlane; "
                                     "in a clone the one in the project folder)")
     p.add_argument("--version", action="version", version=f"aos {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True, metavar="command")
     ini = sub.add_parser("init", help="create a starter vault in <folder> (never overwrites)")
     ini.add_argument("folder", help="target folder, created if missing")
     ini.set_defaults(fn=cmd_init)
-    st = sub.add_parser("setup", help="copy the starter files into your folder ($AOS_HOME, default ~/agentic-os; never overwrites)")
+    st = sub.add_parser("setup", help="copy the starter files into your folder ($AOS_HOME, default ~/starlane; never overwrites)")
     st.add_argument("folder", nargs="?", help="another folder than $AOS_HOME")
     st.set_defaults(fn=cmd_setup)
     sub.add_parser("digest", help="write the digest (into the digest folder, default AI/Digest)").set_defaults(fn=cmd_digest)
@@ -710,7 +710,7 @@ def main(argv: list[str] | None = None) -> int:
         if home_is_checkout() and not (args.config or os.environ.get("AOS_CONFIG")) and args.cmd != "init" \
                 and not (args.cmd == "setup" and args.folder):
             # print, not _out: inside that project the command that works is `python -m aos`, not `aos`
-            print(f"{home_dir()} holds a copy of the Agentic OS code, so it is a working project and not a folder `aos setup` made. "
+            print(f"{home_dir()} holds a copy of the Starlane code, so it is a working project and not a folder `aos setup` made. "
                   f"Set AOS_HOME to a folder of its own (aos setup ~/my-aos, then AOS_HOME=~/my-aos), or run `python -m aos` inside that project.",
                   flush=True)
             return 2

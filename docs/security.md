@@ -13,7 +13,7 @@ The system runs with your user rights and reads your whole vault. That is why th
 | read the vault | edit your notes |
 | write into the digest folder (`AI/Digest/` by default: digest, vault check, dated daily copies) and delete old dated digest copies there (prune) | push, send or share anything |
 | write state and logs into `data/`; your own agents into `agents.local.toml` and `agents/local/` | run a shell or arbitrary programs |
-| `aos setup` copies the starter files (config, routines, agents, skills, docs, demo vault) into your own folder (`~/agentic-os` or `$AOS_HOME` by default); `aos init <folder>` makes a small starter vault. Both only add files that do not exist yet | |
+| `aos setup` copies the starter files (config, routines, agents, skills, docs, demo vault) into your own folder (`~/starlane` or `$AOS_HOME` by default); `aos init <folder>` makes a small starter vault. Both only add files that do not exist yet | |
 | `git pull --rebase` in the vault, **only if you switch that routine on**; it rewrites files in the vault to match your remote, like any pull | |
 
 The system never writes into `.obsidian/` *with the default settings*: it only writes into the configured digest folder. If you point the digest folder somewhere else, it writes there; nothing stops a config that points it at `.obsidian/`.
