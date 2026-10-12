@@ -91,7 +91,8 @@ class AtlasStaticTests(unittest.TestCase):
         # both popups open inside the chat pane (overflow: hidden): they are fitted into it, not cut off
         self.assertIn("pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); fitPop(pop);", view)
         self.assertIn("trigger.setAttribute('aria-expanded', String(on)); if (on) fitPop(pop);", JS)
-        self.assertNotIn("max-height: 60vh", HTML[HTML.index(".atl-recent-pop {"):][:300])
+        self.assertNotIn("max-height", HTML[HTML.index(".atl-recent-pop {"):][:200])   # fitPop sets the height
+        self.assertIn(".atl-comp-row { display: flex; flex-wrap: wrap;", HTML)        # Send never leaves a narrow pane
 
     def test_going_home_flies_back_and_the_ring_emerges_from_the_middle(self):
         self.assertIn("function returnHome(kind, focus)", JS)
