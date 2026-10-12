@@ -138,10 +138,10 @@ class GlassFallbackTests(unittest.TestCase):
         self.assertTrue(m, "popup rule missing")
         self.assertIn("var(--lg-a-pop)", m.group(1))
         self.assertNotIn("--lg-f", m.group(1))
-        # the ones that open inside another pane are nearly opaque: their backdrop would only be that pane
+        # the ones that open inside another pane are opaque: their backdrop would only be that pane, showing through
         m = re.search(r"html:root body :is\(\.mp-pop, \.atl-recent-pop, \.agx-box\) \{([^}]*)\}", css)
         self.assertTrue(m)
-        self.assertRegex(m.group(1), r"var\(--surface\) (9[0-9])%")
+        self.assertRegex(m.group(1), r"rgba\(255,255,255,0\) 50%\), var\(--surface\);")
 
 
 class TabWiringTests(unittest.TestCase):

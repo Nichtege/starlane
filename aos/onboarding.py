@@ -236,13 +236,13 @@ Verify: `python -m aos jobs` lists the finished job.
         done=_own_agent,
         steps=(
             "Dashboard: Atlas view > New agent. Terminal: `python -m aos agent-new` (asks step by step).",
-            "Decide vault (reads notes) or web (searches the web): never both.",
+            "Decide vault (reads notes) or web (reads notes and searches the web).",
             "Write the description as: what it delivers; vault or web. For: ... Not for: ... (→ other agent). See docs/agents.md.",
             "Your agents go to agents.local.toml and agents/local/; delete one with `python -m aos agent-rm <id>`.",
         ),
         prompt="""Help me design and create my own Starlane agent.
 First read README.md, docs/agents.md (especially "Writing a great description" and "Creating your own agents") and agents.toml in this folder.
-1. Ask me what the agent should do for me, with two or three real example tasks. Then decide with me: vault access (reads my notes) or web access (web search), never both.
+1. Ask me what the agent should do for me, with two or three real example tasks. Then decide with me: vault access (reads my notes) or web access (reads my notes and searches the web).
 2. Propose: name, description in the pattern from docs/agents.md (at most 280 characters, with "Not for" neighbours), group, model, up to 12 keywords, up to 4 example tasks, and instructions with the sections Identity, Working method, Boundaries, Output (`python -m aos agent-new --template` prints a template).
 3. After I approve, write the instructions to a temporary Markdown file in this folder, run `python -m aos agent-new --name "..." --description "..." --instructions-file <file> [--web] --group "..." --model ... --keyword ... --example "..."`, and then delete the temporary file.
 4. Run `python -m aos agents` and show me the new agent. Ask before running a test task, since it costs money.

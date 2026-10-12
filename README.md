@@ -108,8 +108,9 @@ ready prompt for Claude Code for each step. The full guide: [docs/getting-starte
 
 ## Safety model
 
-- **Read-only agents.** Tools come from a fixed whitelist: vault (`Read`, `Grep`, `Glob`) or web (`WebSearch`,
-  `WebFetch`), never both unless an agent opts in with `mixed = true`. Anything else is rejected when the file loads.
+- **Read-only agents.** Tools come from a fixed whitelist: vault (`Read`, `Grep`, `Glob`) and web (`WebSearch`,
+  `WebFetch`). Every agent reads your notes for context; one that also searches the web must say `mixed = true` and is
+  told never to put note text into a search or URL. Anything else is rejected when the file loads.
 - **Never writes into your notes.** The only place the system writes inside the vault is the digest folder (the opt-in
   `git-pull` routine is the exception: it runs `git pull --rebase` there, which updates files to match your remote).
 - **Whitelisted routines.** `routines.toml` names commands from a fixed list; they run without a shell, with a time

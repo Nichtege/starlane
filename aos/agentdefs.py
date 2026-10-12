@@ -8,7 +8,7 @@ Custom agents live apart from the shipped ones:
 
 `load_agents()` reads both files together, so every other part of the system (Atlas, server, CLI) sees the
 custom agents like all others. The safety rules are the same as for agents.toml and are not bypassed here:
-tools only by access type (read the vault OR the web, never both), model from the fixed list, no path
+tools only by access type (read the vault, or read the vault and search the web as a `mixed` agent), model from the fixed list, no path
 outside agents/local/, prompt without credential patterns.
 """
 
@@ -31,7 +31,7 @@ from .mapcheck import redact
 from .scheduler import Busy, TickLock, atomic_write
 
 CUSTOM_GROUP = "Custom"
-ACCESS = {"vault": A.VAULT_TOOLS, "web": A.WEB_TOOLS}
+ACCESS = {"vault": A.VAULT_TOOLS, "web": A.VAULT_TOOLS + A.WEB_TOOLS}  # every agent reads the vault for context
 MAX_CUSTOM = 40
 NAME_MAX = 40
 DESC_MIN, DESC_MAX = 10, 280
@@ -190,7 +190,7 @@ def parse_spec(raw: dict, *, base: Spec | None = None) -> Spec:
         raise A.Refused("The instructions look like they contain a password or key. That does not belong in a prompt.", 400)
     access = str(pick("access", "vault")).strip().lower()
     if access not in ACCESS:
-        raise A.Refused("Access must be 'vault' (read notes) or 'web' (web search), not both", 400)
+        raise A.Refused("Access must be 'vault' (read notes) or 'web' (read notes and search the web)", 400)
     group = pick("group", CUSTOM_GROUP)
     group = _one_line(group, "Group", 1, GROUP_MAX) if str(group or "").strip() else CUSTOM_GROUP
     model = str(pick("model", S.DEFAULT_MODEL)).strip().lower()
@@ -271,6 +271,9 @@ def _entry_for(agent_id: str, spec: Spec, existing: dict | None = None) -> dict:
         tools=list(ACCESS[spec.access]), timeout_s=spec.timeout_s, max_runs_per_day=spec.max_runs_per_day,
         enabled=spec.enabled, prompt=f"{PROMPT_DIR}/{agent_id}.md", keywords=list(spec.keywords), examples=list(spec.examples),
     )
+    e.pop("mixed", None)
+    if spec.access == "web":
+        e["mixed"] = True  # vault and web together (see RULES_MIXED in agents.py)
     return e
 
 

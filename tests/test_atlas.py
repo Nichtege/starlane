@@ -86,6 +86,10 @@ class AtlasStaticTests(unittest.TestCase):
         self.assertIn("autoModel: true", view)                               # "Default" = the agent's model
         self.assertIn("if (v.pickM && ch.models.includes(v.pickM)) body.model = v.pickM;", view)
         self.assertIn("if (v.pickE && ch.efforts.includes(v.pickE)) body.effort = v.pickE;", view)
+        # both popups open inside the chat pane (overflow: hidden): they are fitted into it, not cut off
+        self.assertIn("pop.hidden = false; btn.setAttribute('aria-expanded', 'true'); fitPop(pop);", view)
+        self.assertIn("trigger.setAttribute('aria-expanded', String(on)); if (on) fitPop(pop);", JS)
+        self.assertNotIn("max-height: 60vh", HTML[HTML.index(".atl-recent-pop {"):][:300])
 
     def test_going_home_flies_back_and_the_ring_emerges_from_the_middle(self):
         self.assertIn("function returnHome(kind, focus)", JS)
@@ -126,6 +130,70 @@ class AtlasStaticTests(unittest.TestCase):
         stage = JS[JS.index("function createHomeStage("): JS.index("// --- Home page widgets")]
         self.assertNotIn("ctx.arc(cx, cy, R, 0, TAU); ctx.stroke()", stage)   # no band along the ring
         self.assertIn("dot(sprGrey, st.x, st.y", stage)
+
+
+@unittest.skipUnless(shutil.which("node"), "Node not installed")
+class PopupFitTests(unittest.TestCase):
+    """fitPop on a fake DOM: the Atlas chat pane is [778, 16, 1086, 636] in a 1102 x 652 window (the size where the
+    history menu used to be cut off on the left and the model picker at the top and on the right)."""
+
+    def fit(self, case: dict) -> dict:
+        fn = JS[JS.index("function fitPop(pop) {"): JS.index("\naddEventListener('resize'")]
+        body = """
+const BODY = { cs: {} };
+const document = { body: BODY };
+const innerWidth = 1102, innerHeight = 652;
+const getComputedStyle = el => ({ overflowX: 'visible', overflowY: 'visible', ...el.cs });
+const o = CASE;
+const pane = { cs: { overflowX: 'hidden', overflowY: 'hidden' }, parentElement: BODY, getBoundingClientRect: () => o.pane };
+const anchor = { cs: {}, parentElement: pane, getBoundingClientRect: () => o.anchor };
+const style = {};
+const num = v => parseFloat(v) || 0;
+const pop = { style, parentElement: anchor, getBoundingClientRect() {
+  const w = Math.min(o.width, num(style.maxWidth) || Infinity), h = Math.min(o.content, num(style.maxHeight) || Infinity);
+  const x = (o.right ? o.anchor.right - w : o.anchor.left) + num(style.translate);
+  const y = o.up ? o.anchor.top - 8 - h : o.anchor.bottom + 6;
+  return { left: x, right: x + w, top: y, bottom: y + h, width: w, height: h };
+} };
+fitPop(pop);
+console.log(JSON.stringify({ rect: pop.getBoundingClientRect(), style }));
+""".replace("CASE", json.dumps(case))
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "t.js"
+            f.write_text(fn + "\n" + body, encoding="utf-8")
+            r = subprocess.run(["node", str(f)], capture_output=True, text=True, timeout=30)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    PANE = {"left": 778, "top": 16, "right": 1086, "bottom": 636}
+
+    def test_history_menu_moves_back_into_the_pane_and_shows_every_row(self):
+        got = self.fit({"pane": self.PANE, "anchor": {"left": 990, "top": 30, "right": 1070, "bottom": 60},
+                        "right": True, "width": 340, "content": 532})
+        r = got["rect"]
+        self.assertGreaterEqual(r["left"], 786)
+        self.assertLessEqual(r["right"], 1078)
+        self.assertEqual(r["height"], 532)             # everything visible, no inner scrolling
+        self.assertEqual(got["style"]["maxHeight"], "")
+
+    def test_a_menu_taller_than_the_pane_scrolls_inside_it(self):
+        got = self.fit({"pane": self.PANE, "anchor": {"left": 990, "top": 30, "right": 1070, "bottom": 60},
+                        "right": True, "width": 340, "content": 900})
+        self.assertLessEqual(got["rect"]["bottom"], 628)
+        self.assertEqual(got["style"]["overflowY"], "auto")
+
+    def test_model_picker_opening_upwards_stays_inside_at_the_top_and_right(self):
+        got = self.fit({"pane": self.PANE, "anchor": {"left": 798, "top": 590, "right": 960, "bottom": 632},
+                        "up": True, "width": 330, "content": 600})
+        r = got["rect"]
+        self.assertGreaterEqual(r["top"], 24)
+        self.assertLessEqual(r["right"], 1078)
+        self.assertGreaterEqual(r["left"], 786)
+
+    def test_a_popup_with_room_is_left_as_it_is(self):
+        got = self.fit({"pane": {"left": 0, "top": 0, "right": 1102, "bottom": 652},
+                        "anchor": {"left": 500, "top": 30, "right": 900, "bottom": 60}, "right": True, "width": 340, "content": 300})
+        self.assertEqual((got["style"]["translate"], got["style"]["maxHeight"]), ("", ""))
 
 
 @unittest.skipUnless(shutil.which("node"), "Node not installed")
