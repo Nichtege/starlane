@@ -103,6 +103,9 @@ ready prompt for Claude Code for each step. The full guide: [docs/getting-starte
 
 ## Make it yours
 
+- **Your settings, kept apart**: put what you change into `aos.local.toml` next to `aos.toml`, with only those keys
+  (for example `[vault] path` and `[user] name`). It is merged over `aos.toml` table by table, so a `git pull` of a new
+  Starlane never collides with your settings, and `aos doctor` shows that it is in use.
 - **Your name and language**: `[user]` in `aos.toml` (`name`, `ui_language`, `language`). `ui_language` is the
   interface (`en` or `de`), `language` the language agents reply in (default: the interface language). See
   [docs/languages.md](docs/languages.md).

@@ -553,7 +553,8 @@
   "Vault not found: {path}. Set [vault] path in aos.toml (or AOS_VAULT), or create a starter vault with `python -m aos init <folder>`.": "Vault nicht gefunden: {path}. Setz [vault] path in aos.toml (oder AOS_VAULT) oder leg mit `python -m aos init <folder>` einen Start-Vault an.",
   "Project": "Projekt",
   "User": "Benutzer",
-  "default": "Standard"
+  "default": "Standard",
+  "Your own settings on top": "Eigene Einstellungen darüber"
  },
  "web": {
   "Skip to content": "Zum Inhalt springen",

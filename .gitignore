@@ -12,7 +12,8 @@ aos/_shipped/
 # Digests generated from the bundled demo vault
 examples/vault/AI/Digest/
 
-# Your own agents (dashboard / `aos agent-new`): local data, not part of the project
+# Your own settings (merged over aos.toml) and agents (dashboard / `aos agent-new`): local, not part of the project
+/aos.local.toml
 /agents.local.toml
 agents/local/
 

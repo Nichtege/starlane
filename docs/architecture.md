@@ -23,7 +23,7 @@ A fifth concern, **skills**, sits across Agent and Pulse: a skill is a recipe (`
 ## Module map
 | Module | Responsibility |
 |---|---|
-| `aos/config.py` | Loads `aos.toml` (or `AOS_CONFIG`), resolves paths, holds `Config` and `Conventions`. Decides between *checkout* (the project folder is the code folder) and *installed* (a wheel: the user's folder `$AOS_HOME`, default `~/starlane`, is the project root). |
+| `aos/config.py` | Loads `aos.toml` (or `AOS_CONFIG`) with your own `aos.local.toml` next to it merged over it, resolves paths, holds `Config` and `Conventions`. Decides between *checkout* (the project folder is the code folder) and *installed* (a wheel: the user's folder `$AOS_HOME`, default `~/starlane`, is the project root). |
 | `aos/shipped.py` | The list of starter files (`aos.toml`, routines, agents, skills, docs, the demo vault) with what never ships. `aos setup` copies them, never overwriting; `setup.py` bundles the same list into the wheel as `aos/_shipped`, and `MANIFEST.in` mirrors it for the sdist. |
 | `aos/i18n.py` | The interface language: `tr`, `trc` (with a context), `trn` (singular/plural) and `tr_mark` look English source texts up in `aos/locales/<code>.json` and fall back to English. The CLI switches the process language once from `[user] ui_language`; `dashboard.render_html` embeds the locale's `web` section for the page. See [languages.md](languages.md). |
 | `aos/vault.py` | Walks the vault, parses frontmatter and wikilinks, builds the link index. Never writes. |

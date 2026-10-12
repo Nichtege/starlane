@@ -539,6 +539,8 @@ def cmd_doctor(cfg: Config, args) -> int:
     _out(tr("Starlane {version} · Python {python} · machine {machine}", version=__version__, python=sys.version.split()[0], machine=cfg.machine))
     check(sys.version_info >= (3, 11), "Python >= 3.11")
     check(cfg.config_file is not None, tr("aos.toml found"), str(cfg.config_file or tr("defaults")), fatal=False)
+    if cfg.local_file:
+        check(True, tr("Your own settings on top"), str(cfg.local_file))
     check(cfg.vault.is_dir(), tr("Vault exists"), str(cfg.vault))
     check(True, tr("Interface language"), f"{cfg.ui_language} · " + tr("agents reply in {language}", language=cfg.language))
     if cfg.vault.is_dir():

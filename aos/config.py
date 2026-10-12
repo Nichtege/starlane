@@ -190,6 +190,7 @@ class Config:
     server_port: int
     routines_file: Path
     config_file: Path | None = None
+    local_file: Path | None = None  # aos.local.toml next to config_file, merged over it (see read_settings)
     agents_file: Path = PROJECT_ROOT / "agents.toml"
     skills_dirs: tuple[Path, ...] = (PROJECT_ROOT / "skills",)  # first hit per skill id wins
     skills_cap: int = 10  # runs per skill and day
@@ -254,14 +255,48 @@ def config_path(path: str | os.PathLike | None = None) -> Path:
     return Path(os.path.expanduser(given)) if given else default_root() / "aos.toml"   # cmd and PowerShell pass "~" through
 
 
+LOCAL_OVERRIDES = True  # tests/__init__.py switches it off: the tests check the shipped files, never a developer's own
+
+
+def local_path(cfg_path: Path) -> Path:
+    """aos.toml -> aos.local.toml next to it (the same rule as agents.toml -> agents.local.toml)."""
+    return cfg_path.with_name(cfg_path.stem + ".local.toml")
+
+
+def _merge(base: dict, over: dict) -> dict:
+    """`over` wins key by key; tables are merged, everything else (lists too) is replaced."""
+    out = dict(base)
+    for key, value in over.items():
+        out[key] = _merge(out[key], value) if isinstance(value, dict) and isinstance(out.get(key), dict) else value
+    return out
+
+
+def _read_toml(path: Path) -> dict:
+    with path.open("rb") as fh:
+        try:
+            return tomllib.load(fh)
+        except tomllib.TOMLDecodeError as exc:
+            raise ValueError(tr("{path}: {error}. A Windows path is written with / (\"C:/Users/me/notes\") "
+                                "or in single quotes ('C:\\Users\\me\\notes').", path=path, error=exc)) from None
+
+
+def read_settings(cfg_path: Path) -> tuple[dict, Path | None]:
+    """The settings of aos.toml with your own aos.local.toml next to it merged over them, and that file if it exists.
+    The shipped aos.toml stays as it is (an update never collides with your settings); aos.local.toml holds only what
+    you change. It follows the file, not how it was named, so --config, $AOS_CONFIG and the scheduler's child runs
+    all see the same settings."""
+    raw = _read_toml(cfg_path) if cfg_path.is_file() else {}
+    local = local_path(cfg_path)
+    if LOCAL_OVERRIDES and local.is_file():
+        return _merge(raw, _read_toml(local)), local
+    return raw, None
+
+
 def peek_ui_language(path: str | os.PathLike | None = None) -> str:
     """Only `[user] ui_language` (or $AOS_UI_LANGUAGE), without checking anything else: the CLI needs the language
     before it builds its help texts and before load_config reports an error in that language. "en" if unreadable."""
     try:
-        code = os.environ.get("AOS_UI_LANGUAGE")
-        if not code:
-            with config_path(path).open("rb") as fh:
-                code = tomllib.load(fh).get("user", {}).get("ui_language", "en")
+        code = os.environ.get("AOS_UI_LANGUAGE") or read_settings(config_path(path))[0].get("user", {}).get("ui_language", "en")
         return normalize_language(code)
     except (OSError, ValueError, AttributeError):  # TOMLDecodeError is a ValueError
         return "en"
@@ -269,15 +304,8 @@ def peek_ui_language(path: str | os.PathLike | None = None) -> str:
 
 def load_config(path: str | os.PathLike | None = None) -> Config:
     cfg_path = config_path(path)
-    raw: dict = {}
-    if cfg_path.is_file():
-        with cfg_path.open("rb") as fh:
-            try:
-                raw = tomllib.load(fh)
-            except tomllib.TOMLDecodeError as exc:
-                raise ValueError(tr("{path}: {error}. A Windows path is written with / (\"C:/Users/me/notes\") "
-                                    "or in single quotes ('C:\\Users\\me\\notes').", path=cfg_path, error=exc)) from None
-    base = cfg_path.parent if cfg_path.is_file() else default_root()
+    raw, local = read_settings(cfg_path)
+    base = cfg_path.parent if cfg_path.is_file() or local else default_root()
 
     vault_raw = os.environ.get("AOS_VAULT") or raw.get("vault", {}).get("path") or "~/notes"
     vault = _resolve(base, vault_raw)
@@ -308,6 +336,7 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
         server_port=int(server.get("port", 8765)),
         routines_file=_resolve(base, raw.get("paths", {}).get("routines", "routines.toml")),
         config_file=cfg_path if cfg_path.is_file() else None,
+        local_file=local,
         agents_file=_resolve(base, raw.get("paths", {}).get("agents", "agents.toml")),
         skills_dirs=tuple(dict.fromkeys(_resolve(base, d) for d in dirs)),
         skills_cap=max(1, int(skills.get("max_runs_per_day", 10))),

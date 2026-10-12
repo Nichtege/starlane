@@ -111,6 +111,10 @@ mit einem fertigen Prompt für Claude Code für jeden Schritt. Die ganze Anleitu
 
 ## Mach es zu deinem
 
+- **Deine Einstellungen, sauber getrennt**: Schreib, was du änderst, in eine `aos.local.toml` neben der `aos.toml`, nur
+  mit diesen Schlüsseln (zum Beispiel `[vault] path`, `[user] name` und `ui_language = "de"`). Sie wird Tabelle für
+  Tabelle über die `aos.toml` gelegt; ein `git pull` einer neuen Starlane-Version kommt deinen Einstellungen also nie in
+  die Quere, und `aos doctor` zeigt, dass sie benutzt wird.
 - **Dein Name und deine Sprache**: `[user]` in `aos.toml` (`name`, `ui_language`, `language`). `ui_language` stellt die
   Oberfläche um, `language` die Sprache der Agenten (Standard: dieselbe). Siehe [languages.md](languages.md).
 - **Die Struktur deines Vaults**: Nutzen deine Notizen andere Frontmatter-Schlüssel, Ordner oder Überschriften (oder

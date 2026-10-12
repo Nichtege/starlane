@@ -2,6 +2,8 @@
 # Every key is optional; the values below are the defaults unless marked as an example.
 # Environment overrides: AOS_CONFIG (this file), AOS_VAULT, AOS_DATA, AOS_MACHINE, AOS_USER, AOS_LANGUAGE,
 # AOS_UI_LANGUAGE.
+# Your own settings can also live in aos.local.toml next to this file, with only the keys you change: it is merged
+# over this one (table by table), so updating Starlane never collides with them. Recommended in a git clone.
 
 [user]
 # How the agents address and refer to you (prompts, digest greeting).
