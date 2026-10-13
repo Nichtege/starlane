@@ -143,6 +143,8 @@ button { font: inherit; color: inherit; }
 @keyframes drift1 { to { transform: translate3d(12vmax, 8vmax, 0) scale(1.15); } }
 @keyframes drift2 { to { transform: translate3d(-10vmax, 10vmax, 0) scale(.9); } }
 @keyframes drift3 { to { transform: translate3d(-14vmax, 6vmax, 0) scale(1.25); } }
+@media (prefers-reduced-motion: reduce) { .bg i { animation: none; } }
+/* The script moves these animations on ten times a second (driftAurora): see there */
 
 /* Header */
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-top: 18px; padding-bottom: 14px; }
@@ -1339,7 +1341,10 @@ select.agx-in option { background: var(--surface); color: var(--ink); }
 .hs-atlas-t { display: grid; text-align: left; line-height: 1.2; }
 .hs-atlas-t b { font: 600 15px var(--font); }
 .hs-atlas-t small { font: 12px var(--font); color: var(--ink-2); }
-.hs-atlas-sat { transform-origin: 14px 14px; animation: hs-atlas-orbit 16s linear infinite; }
+/* The satellites turn in an HTML box: Chrome runs a rotating span on the compositor, but restyles a rotating svg (or <g>) every frame */
+.hs-atlas-ico { display: grid; flex: none; }
+.hs-atlas-ico > * { grid-area: 1 / 1; }
+.hs-atlas-sat { display: block; width: 28px; height: 28px; animation: hs-atlas-orbit 16s linear infinite; }
 @keyframes hs-atlas-orbit { to { transform: rotate(360deg); } }
 .hs.hs-searching .hs-atlas, .hs.hs-card-open .hs-atlas { opacity: 0; pointer-events: none; }
 /* Zoom into the cloud on Atlas click: everything except the cloud fades out */
@@ -2426,6 +2431,24 @@ function lgLensMap(w, h, r, b) {
   }
   return out;
 }
+// The map as an uncompressed 24-bit BMP data: URL (top-down rows, BGR, each row padded to 4 bytes). It used to be a PNG drawn on a
+// canvas: the PNG encoder took most of the lens setup at load (about 130 ms). A BMP is the bytes behind a 54-byte header, made in
+// well under a millisecond, and decodes to exactly the same pixels. The alpha of the map is always 255: RGB is enough.
+function lgBmpUrl(w, h, px) {
+  const row = (w * 3 + 3) & ~3, size = 54 + row * h, buf = new Uint8Array(size), dv = new DataView(buf.buffer);
+  buf[0] = 0x42; buf[1] = 0x4d; dv.setUint32(2, size, true); dv.setUint32(10, 54, true);   // "BM", file size, offset of the pixels
+  dv.setUint32(14, 40, true); dv.setInt32(18, w, true); dv.setInt32(22, -h, true);           // BITMAPINFOHEADER; negative height: top-down
+  dv.setUint16(26, 1, true); dv.setUint16(28, 24, true); dv.setUint32(34, row * h, true);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4, o = 54 + y * row + x * 3;
+      buf[o] = px[i + 2]; buf[o + 1] = px[i + 1]; buf[o + 2] = px[i];
+    }
+  }
+  let bin = '';
+  for (let i = 0; i < size; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  return 'data:image/bmp;base64,' + btoa(bin);
+}
 // Small pieces also split the colours at the rim (red, green and blue are displaced by slightly different amounts): three passes
 // instead of one, which only pays for tiny things.
 const LG_CHROMA = 9000;                            // css px² up to which a lens disperses colour
@@ -2482,16 +2505,7 @@ const LG = (() => {
   function filterFor(w, h, r) {
     const chroma = lgChroma(w, h), key = w + 'x' + h + 'r' + r + (chroma ? 'c' : '');
     if (made.has(key)) { const id = made.get(key); made.delete(key); made.set(key, id); return id; }
-    const b = lgBezel(w, h), cv = document.createElement('canvas');
-    cv.width = w; cv.height = h;
-    const ctx = cv.getContext('2d');
-    if (!ctx) return null;
-    const img = ctx.createImageData(w, h);
-    img.data.set(lgLensMap(w, h, r, b));
-    ctx.putImageData(img, 0, 0);
-    let url;
-    try { url = cv.toDataURL('image/png'); } catch (e) { return null; }
-    const id = 'lg' + (serial++);
+    const b = lgBezel(w, h), url = lgBmpUrl(w, h, lgLensMap(w, h, r, b)), id = 'lg' + (serial++);
     const f = svgEl('filter', { id, x: 0, y: 0, width: w, height: h, filterUnits: 'userSpaceOnUse', primitiveUnits: 'userSpaceOnUse', 'color-interpolation-filters': 'sRGB' });
     f.append(svgEl('feImage', { href: url, x: 0, y: 0, width: w, height: h, preserveAspectRatio: 'none', result: 'map' }));
     const shift = (scale, result) => svgEl('feDisplacementMap', { in: 'SourceGraphic', in2: 'map', scale: scale.toFixed(1), xChannelSelector: 'R', yChannelSelector: 'G', result });
@@ -8636,16 +8650,24 @@ function createGlassPass(view, surf, host, redraw) {
     G.n = n;
     return n;
   }
+  // Reads where the panes are before the frame writes to the DOM (the balls move every frame): read before write, so the read
+  // costs no forced style and layout pass. A draw() that is not a frame (resize, data) measures inside render instead.
+  function measure() {
+    G.fresh = false;
+    if (!view.grid || !view.wide || LG.mode !== 'lens' || !(view.glass > GLASS_MATTE) || !surf.w || !surf.h) return;
+    G.rr = host.getBoundingClientRect(); collect(G.rr, surf.sx, surf.sy); G.fresh = true;
+  }
   // Paints the glass of this frame. S: the stage state (pointer parallax moves the light a little). true: the panes are glass now.
   function render(S) {
-    const grid = view.grid;
+    const grid = view.grid, fresh = G.fresh;
+    G.fresh = false;
     if (!grid || !view.wide || LG.mode !== 'lens' || !(view.glass > GLASS_MATTE) || !surf.w || !surf.h || !build()) { off(); return false; }
     const gl = G.gl, W = surf.canvas.width, H = surf.canvas.height;
     if (gl.isContextLost() || Math.max(W, H) > G.max) { off(); return false; }   // too large for a texture: DOM frost
-    const sx = surf.sx, sy = surf.sy, rr = host.getBoundingClientRect(), pk = view.glass + '|' + Math.min(sx, sy);
+    const sx = surf.sx, sy = surf.sy, rr = fresh ? G.rr : host.getBoundingClientRect(), pk = view.glass + '|' + Math.min(sx, sy);
     if (G.pk !== pk) { G.pk = pk; G.pv = glassGl(view.glass, Math.min(sx, sy)); }
     const par = G.pv;
-    if (!collect(rr, sx, sy) && !G.active) return false;
+    if (!(fresh ? G.n : collect(rr, sx, sy)) && !G.active) return false;
     on(grid);
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     if (!G.tex || G.tw !== W || G.th !== H) {
@@ -8687,7 +8709,7 @@ function createGlassPass(view, surf, host, redraw) {
     return true;
   }
   return {
-    render, off,
+    render, measure, off,
     get active() { return G.active; },
     get draws() { return G.draws; },
     destroy() {
@@ -8720,10 +8742,11 @@ function createHomeStage(view) {
   const core = h('button', { type: 'button', class: 'hs-core', 'aria-label': 'Open Second Brain' }, h('span', { class: 'hs-core-tip', 'aria-hidden': 'true' }, 'Click: open Second Brain'));
   // Second entry point: Atlas (agents and chat). Same timing as the core, but a gold flash with two rings.
   const atlasN = (Array.isArray(G.raw.agents) ? G.raw.agents : []).filter(a => a && a.id !== 'agents.toml').length;
-  const atlasIco = svgEl('svg', { width: 28, height: 28, viewBox: '0 0 28 28', 'aria-hidden': 'true', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round' });
-  const sat = svgEl('g', { class: 'hs-atlas-sat' });
+  const icoSvg = () => svgEl('svg', { width: 28, height: 28, viewBox: '0 0 28 28', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round' });
+  const sat = icoSvg(), hub = icoSvg();
   [[14, 4.5], [22.2, 11], [19, 21.5], [8, 20.5], [5.6, 10]].forEach(([x, y]) => { sat.append(svgEl('path', { d: 'M14 14L' + x + ' ' + y, opacity: 0.55 }), svgEl('circle', { cx: x, cy: y, r: 1.9, fill: 'currentColor', stroke: 'none' })); });
-  atlasIco.append(sat, svgEl('circle', { cx: 14, cy: 14, r: 3.4, fill: 'currentColor', stroke: 'none' }));
+  hub.append(svgEl('circle', { cx: 14, cy: 14, r: 3.4, fill: 'currentColor', stroke: 'none' }));
+  const atlasIco = h('span', { class: 'hs-atlas-ico', 'aria-hidden': 'true' }, h('span', { class: 'hs-atlas-sat' }, sat), hub);
   const atlasBtn = h('button', { type: 'button', class: 'hs-atlas', title: 'Open Atlas (A)', 'aria-label': 'Open Atlas: ' + (atlasN || 'no') + (atlasN === 1 ? ' agent' : ' agents') + ', replaces the chat' },
     atlasIco, h('span', { class: 'hs-atlas-t' }, h('b', null, 'Atlas'), h('small', null, atlasN ? atlasN + (atlasN === 1 ? ' agent' : ' agents') + ' · with web search' : 'Agents and chat')));
   const empty = h('p', { class: 'hs-empty', hidden: true }, 'No balls yet. Skills and artifacts appear here.');
@@ -9129,6 +9152,7 @@ function createHomeStage(view) {
       S.sway = Math.sin(now / 1000 * 0.11) * 0.02;
     }
     const t0 = performance.now();
+    glass.measure();   // reads first: moveBalls() below writes
     if (!RM.matches && !S.flying) {
       const P = stageHome(), tg = galaxyTarget(cloud, P, null);
       if (!sim.ready) snapOrbSim(sim, cloud.length, tg);
@@ -9991,12 +10015,38 @@ function globalKeys(e) {
   }
 }
 
+// The aurora discs drift over 26 to 38 s, a few px a second. Each time they move, the browser redoes every glass surface above
+// them: at 144 Hz the 95th percentile frame took 15 ms with the discs moving and 8 ms with them still. Ten steps a second look the
+// same (under a px each, on a soft disc), so each drift animation is paused when it starts and moved on by a timer. The CSS keeps
+// the curve; leaving the home page cancels the animation and coming back starts a new one, which is caught the same way.
+function driftAurora() {
+  const bg = document.querySelector('.bg'), live = new Set();
+  if (!bg) return;
+  let id = 0, last = 0;
+  const step = () => {
+    const now = performance.now(), dt = now - last;
+    last = now;
+    for (const a of live) {
+      if (a.playState === 'idle') live.delete(a);   // cancelled (another view or reduced motion)
+      else a.currentTime += dt;
+    }
+    if (!live.size) { clearInterval(id); id = 0; }
+  };
+  bg.addEventListener('animationstart', e => {
+    const a = e.target.getAnimations().find(x => x.animationName === e.animationName);
+    if (!a || live.has(a)) return;
+    a.pause(); live.add(a);
+    if (!id) { last = performance.now(); id = setInterval(step, 100); }
+  });
+}
+
 function init() {
   // Theme first (even if the data is broken)
   const initialTheme = store.get('theme') || document.documentElement.getAttribute('data-theme') || 'dark';
   applyTint(store.get('tint') || 'blue');
   applyTheme(initialTheme);
   LG.init();
+  driftAurora();
   $('#theme').addEventListener('click', () => applyTheme({ auto: 'light', light: 'dark', dark: 'auto' }[state.theme]));
   DARK.addEventListener('change', () => { if (state.theme === 'auto') { readPalette(); bus.emit('theme'); } });
 

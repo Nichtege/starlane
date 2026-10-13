@@ -261,5 +261,27 @@ class LayoutRegressionTests(unittest.TestCase):
         self.assertEqual(len(TINT_IDS), 9)
 
 
+class CheapFrameTests(unittest.TestCase):
+    """The optimisation pass: same pixels, less work per frame and at load (measurements in docs/design.md)."""
+
+    def test_the_aurora_steps_ten_times_a_second(self):
+        self.assertIn("a.pause(); live.add(a);", JS)
+        self.assertIn("id = setInterval(step, 100);", JS)
+        self.assertIn("if (a.playState === 'idle') live.delete(a);", JS)
+        self.assertIn("  LG.init();\n  driftAurora();\n", JS)
+        self.assertIn("@media (prefers-reduced-motion: reduce) { .bg i { animation: none; } }", CSS)
+
+    def test_the_glass_pass_reads_layout_before_the_frame_writes(self):
+        loop = JS[JS.index("    glass.measure();"):]
+        self.assertLess(loop.index("glass.measure();"), loop.index("moveBalls(dt);"))
+        self.assertIn("rr = fresh ? G.rr : host.getBoundingClientRect()", JS)
+
+    def test_the_atlas_orbit_turns_an_html_box(self):
+        self.assertIn(".hs-atlas-sat { display: block; width: 28px; height: 28px; animation: hs-atlas-orbit 16s linear infinite; }", CSS)
+        self.assertIn("h('span', { class: 'hs-atlas-sat' }, sat)", JS)
+        self.assertRegex(CSS, r"prefers-reduced-motion: reduce\) \{ \.hs-atlas-sat[ ,{]")
+        self.assertNotRegex(CSS, r"\.hs-atlas svg[^{]*\{[^}]*animation")
+
+
 if __name__ == "__main__":
     unittest.main()
