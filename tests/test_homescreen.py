@@ -672,7 +672,7 @@ class HomescreenContractTests(unittest.TestCase):
         self.assertIn("glassControl(view, false)", menu)                           # the full control, first in the menu
         self.assertLess(menu.index("glassControl(view, false)"), menu.index("'Widgets'"))
         self.assertIn("view.editing ? glassControl(view, true) : null", bar)       # the compact one while arranging
-        self.assertIn("title: 'Customise: see-through and visible widgets'", bar)
+        self.assertIn("title: 'Customise: appearance, see-through and visible widgets'", bar)
         ctl = _between("function glassControl(view, compact) {", "// The buttons at the top")
         for needle in ("type: 'range'", "min: 0, max: 100, step: 1", "'aria-label': 'See-through, from matte to liquid'",
                        "view.setGlass(+range.value, false)",       # while dragging: look only

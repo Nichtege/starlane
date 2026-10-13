@@ -134,7 +134,7 @@ button { font: inherit; color: inherit; }
 @media (min-width: 900px) { :root { --gutter: 32px; } }
 [hidden] { display: none !important; }
 
-.bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background-color: var(--bg); background-image: var(--space, none);
+.bg { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background-color: var(--sky, var(--bg)); background-image: var(--space, none);
   background-size: 100% 100%, 100% 100%, 100% 100%, 170px 170px, 230px 230px, 290px 290px; }   /* dark themes: faint nebula glows and a tiled starfield, pure CSS */
 .bg i { position: absolute; border-radius: 50%; filter: blur(96px); opacity: var(--aurora-o); will-change: transform; }
 .bg i:nth-child(1) { width: 62vmax; height: 62vmax; left: -18vmax; top: -30vmax; background: var(--aurora-1); animation: drift1 26s ease-in-out infinite alternate; }
@@ -972,6 +972,13 @@ body.is-home :is(.hs-grid, .hs-dots) { transition: opacity .35s ease, filter .35
 .app-ico[data-app="skills"] { --app: #d9264a; } .app-ico[data-app="artifacts"] { --app: #0070e0; } .app-ico[data-app="rings"] { --app: #c76b00; }
 .app-ico[data-app="links"] { --app: #248a3d; } .app-ico[data-app="timeline"] { --app: #008a80; } .app-ico[data-app="health"] { --app: #6d6d72; }
 .app-ico .tab-ico { display: block; }   /* the tab bar hides its icons below 1100 px; the app icons must not go with them */
+/* Icon styles of iOS, chosen in the Appearance sheet (html[data-icons]): dark (the glyph in the app's colour on near-black), clear (a tile
+   of glass with the label colour), tinted (one colour for all: the one chosen, else the accent) */
+html[data-icons="dark"] .app-ico { background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0) 60%), #1c1c1e; color: color-mix(in srgb, var(--app) 55%, #ffffff); }
+html[data-icons="clear"] .app-ico { background: linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.06) 70%), color-mix(in srgb, var(--ink) 10%, transparent); color: var(--ink);
+  box-shadow: inset 0 0 0 .5px rgba(255,255,255,.45), 0 1px 3px rgba(0,0,0,.18); }
+html[data-icons="tinted"] .app-ico { background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,0) 60%), color-mix(in srgb, var(--icon-tint, var(--accent)) 26%, #101012);
+  color: color-mix(in srgb, var(--icon-tint, var(--accent)) 80%, #ffffff); }
 .app-t { display: grid; min-width: 0; }
 .app-t b { font-size: 15px; font-weight: 600; }
 .app-t span { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1642,6 +1649,54 @@ input[type="checkbox"][role="switch"]:disabled { opacity: .5; cursor: not-allowe
 .w-tint[data-tint="blue"] { --sw: #0088ff; } .w-tint[data-tint="purple"] { --sw: #cb30e0; } .w-tint[data-tint="pink"] { --sw: #ff2d55; }
 .w-tint[data-tint="red"] { --sw: #ff383c; } .w-tint[data-tint="orange"] { --sw: #ff8d28; } .w-tint[data-tint="yellow"] { --sw: #ffcc00; }
 .w-tint[data-tint="green"] { --sw: #34c759; } .w-tint[data-tint="indigo"] { --sw: #6155f5; } .w-tint[data-tint="graphite"] { --sw: #8e8e93; }
+/* The way into the Appearance sheet, first in the Customise menu */
+.w-look { width: 100%; border: 0; background: none; color: var(--ink); text-align: left; font: inherit; margin-bottom: 2px; }
+.w-look svg { color: var(--muted); }
+.w-look-t { display: grid; padding: 6px 0; line-height: 1.25; }
+.w-look-t small { font-size: 12px; color: var(--muted); }
+
+/* Appearance (openLookSheet): a floating pane like the inspector; a sheet from the bottom on a phone */
+.look { position: fixed; z-index: 55; top: 12px; right: 12px; bottom: 12px; width: min(388px, calc(100vw - 24px)); display: grid; grid-template-rows: auto minmax(0, 1fr) auto;
+  color: var(--ink); background: var(--glass-2); border-radius: 34px; box-shadow: var(--shadow-lg); animation: slideIn .5s var(--ease); }
+.look:focus { outline: none; }
+.look-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 6px 24px; }
+.look-h h2 { margin: 0; font: var(--t-title3); }
+.look-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 0 16px 6px; }
+.look-sec { padding: 12px 8px 16px; border-top: 1px solid var(--line); }
+.look-sec:first-child { border-top: 0; }
+.look-sh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 10px; font: 600 15px/20px var(--font); }
+.look-std { padding: 0; border: 0; background: none; cursor: pointer; font: 600 13px var(--font); color: var(--accent-ink); }
+.look-std:disabled { color: var(--label-3); cursor: default; }
+.look-forms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.look-form { display: grid; align-content: start; justify-items: center; gap: 4px; min-width: 0; padding: 4px 4px 7px; border: 0; border-radius: 18px; background: var(--fill-4); color: var(--ink); cursor: pointer; font: 600 12px/15px var(--font); }
+.look-form canvas { display: block; width: 100%; aspect-ratio: 3 / 2; border-radius: 14px; }
+.look-form small { font-weight: 400; color: var(--muted); }
+.look-form:hover { background: var(--fill-3); }
+.look-form[aria-checked="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.look-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.look-preset { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px 0 5px; border: 0; border-radius: 999px; background: var(--fill-3); color: var(--ink); cursor: pointer; font: 500 13px var(--font); }
+.look-preset i { width: 22px; height: 22px; border-radius: 50%; background: var(--sw); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.3); }
+.look-preset:hover { background: var(--fill-2); }
+.look-preset[aria-checked="true"] { background: var(--accent-btn); color: var(--on-accent); }
+.look-wells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 8px; }
+.look-well { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; cursor: pointer; transition: opacity .2s; }
+.look-well span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.look-well input { flex: none; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.look-well input::-webkit-color-swatch-wrapper { padding: 0; }
+.look-well input::-webkit-color-swatch { border: 0; border-radius: 50%; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.35), 0 0 0 .5px rgba(0,0,0,.35); }
+.look-well input::-moz-color-swatch { border: 0; border-radius: 50%; }
+.look-well.is-unused { opacity: .4; }
+.look-note { margin: 10px 0 0; font-size: 12px; color: var(--warn-ink); }
+.look-segs { margin: 0 0 12px; }
+.look-icons { display: flex; justify-content: space-between; gap: 6px; margin: 0 0 14px; padding: 10px 12px; border-radius: 18px; background: var(--fill-4); }
+.look-icons .app-ico { width: 34px; height: 34px; }
+.look-f { padding: 10px 24px 18px; border-top: 1px solid var(--line); }
+.look-f .btn { width: 100%; justify-content: center; }
+@media (max-width: 720px) {
+  .look { top: auto; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); width: auto; max-height: 78vh; animation-name: slideUp; }
+  .look-forms { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .look-form { font-size: 11px; } .look-form small { display: none; }
+}
 
 /* =====================================================================
    Liquid glass: rounded panes that float over deep space.
@@ -1745,13 +1800,13 @@ html:root body .chip[aria-pressed="true"] .n { color: inherit; opacity: .8; }
 html:root body .btn[disabled] { opacity: .5; }
 
 /* The same pieces inside a pane: flat fills (a second blur would only ever see the pane) */
-html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card)
+html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card, .look)
   :is(.btn, .icon-btn, .os-ibtn, .os-btn, .chip) {
   background: var(--fill-2); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
 }
-html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card)
+html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card, .look)
   :is(.btn, .icon-btn, .os-ibtn, .os-btn, .chip):hover { background: var(--fill-1); }
-html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card)
+html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card, .look)
   :is(.btn.primary, .os-btn.solid, .chip[aria-pressed="true"], .os-btn[aria-pressed="true"]) {
   color: var(--on-accent); background: var(--accent-btn); box-shadow: none;
 }
@@ -1774,7 +1829,7 @@ html:root body .tab[aria-selected="true"], html:root body .tab[aria-selected="tr
 
 /* ---- Popups: menus, popovers, the inspector, hover cards. Glass over whatever they open on, denser, so text stays readable,
    and never the lens */
-html:root body :is(.detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .tip, .note, .os-help) {
+html:root body :is(.detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .tip, .note, .os-help, .look) {
   border: 0;
   background:
     var(--lg-over, linear-gradient(transparent, transparent)),
@@ -1785,6 +1840,7 @@ html:root body :is(.detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .
 }
 html:root body :is(.w-pop, .results) { border-radius: var(--lg-r-menu); }
 html:root body .detail { border-radius: var(--lg-r-menu); }
+html:root body .look { border-radius: var(--lg-r-menu); }
 html:root body .hs-card { border-radius: var(--lg-r-menu); color: var(--ink); }
 html:root body :is(.os-preview, .os-controls) { border-radius: var(--lg-r); }
 html:root body :is(.os-card, .os-legendbox, .note) { border-radius: var(--lg-r-m); }
@@ -1792,6 +1848,7 @@ html:root body .tip { border-radius: var(--lg-r-s); }
 html:root body .note.error { --lg-over: linear-gradient(var(--crit-bg), var(--crit-bg)); color: var(--crit-ink); }
 html:root body .note.ok { --lg-over: linear-gradient(var(--good-bg), var(--good-bg)); color: var(--good-ink); }
 @media (max-width: 720px) { html:root body .detail { border-radius: var(--lg-r-sheet); } }   /* the bottom sheet */
+@media (max-width: 720px) { html:root body .look { border-radius: var(--lg-r-sheet); } }
 /* On a phone a menu anchored to its button runs off the screen (the button sits mid-screen, the menu is 320 px wide): it is a sheet
    at the bottom instead, as on the iPhone */
 @media (max-width: 720px) {
@@ -3962,8 +4019,10 @@ function homeBar(view) {
   search.setAttribute('aria-pressed', String(stage.isSearching()));
   view.searchBtn = search;
   const menu = h('details', { class: 'w-menu', open: view.menuOpen || null },
-    h('summary', { class: 'os-ibtn', 'data-fk': 'bar:menu', title: 'Customise: see-through and visible widgets', 'aria-label': 'Customise widgets, ' + (WIDGETS.length - hidden.size) + ' of ' + WIDGETS.length + ' visible' }, strokeIcon(BAR_ICON.widgets, 18)),
+    h('summary', { class: 'os-ibtn', 'data-fk': 'bar:menu', title: 'Customise: appearance, see-through and visible widgets', 'aria-label': 'Customise widgets, ' + (WIDGETS.length - hidden.size) + ' of ' + WIDGETS.length + ' visible' }, strokeIcon(BAR_ICON.widgets, 18)),
     h('div', { class: 'w-pop', role: 'group', 'aria-label': 'Customise widgets' },
+      h('button', { type: 'button', class: 'w-opt w-look', 'data-fk': 'menu:look', 'aria-haspopup': 'dialog', onclick: () => { menu.open = false; openLookSheet(menu.querySelector('summary')); } },
+        h('span', { class: 'w-look-t' }, h('b', null, 'Appearance'), h('small', null, 'Galaxy, colours, sky and icons')), strokeIcon(['M6 3.5l4.5 4.5L6 12.5'], 14)),
       glassControl(view, false),
       h('div', { class: 'w-pop-h', id: 'w-tint-h' }, 'Accent colour'),
       tintPicker(),
@@ -5727,7 +5786,7 @@ const AgentsView = {
       sim.ready = true;
     } else { snapOrbSim(sim, M, home); sim.pw.fill(0); }
     c.live = true; c.leave = 0; c.follow = null;
-    if (!c.A) v.pickAgents(c.t0);
+    if (!c.A || c.shape !== GALAXY_LOOK.shape) v.pickAgents(c.t0);
   },
   // Resting radius of the galaxy for this map (the flight ends in the same framing)
   restCR() { const c = this.cv; return atlasRestCR(c.w, c.h); },
@@ -5736,7 +5795,7 @@ const AgentsView = {
     const v = this, c = v.cv;
     if (!c || !c.w || c.live) return c && c.live ? c.A : null;
     if (!ATLAS_ORB) ATLAS_ORB = makeOrbCloud();
-    if (!c.A || c.nAg !== v.agents().length) v.pickAgents(t);
+    if (!c.A || c.nAg !== v.agents().length || c.shape !== GALAXY_LOOK.shape) v.pickAgents(t);
     return c.A;
   },
   // Agents = stars of the galaxy: per agent the star nearest to its slot on the arms (pickAgentStars), ordered by angle around the
@@ -5748,7 +5807,7 @@ const AgentsView = {
     const picks = pickAgentStars(oc.cloud, list.length, t), A = makeAgentSet(oc.cloud.length, picks);
     c.agentList = list.slice(0, picks.length).map((g, k) => Object.assign(g, { i: picks[k].i }));
     c.agentList.forEach((g, k) => { A.ci[k] = g.ci; A.w[k] = sim.pw[g.i] || 0; });
-    c.A = A; c.nAg = v.agents().length;
+    c.A = A; c.nAg = v.agents().length; c.shape = GALAXY_LOOK.shape;
     v.geom();
   },
   geom() { const c = this.cv; if (c.A && c.w) { c.hubClear = Math.max(95, c.hubR * 2.6); agentGeom(c.A, c.w, c.h, c.rest || this.restCR(), c.hubClear); c.rz = c.A.S; } },
@@ -7426,8 +7485,12 @@ function homeBalls(hiddenSet) {
 // holds two diffuse roles that are particles like all the others: GLOW (big, faint, additive: the unresolved starlight that
 // makes the stars read as one band) and DUST (medium, dark, darkening: the lanes on the inner edge of the arms, along the bar
 // and across the bulge); see galaxyMistPoint(). Every particle takes its target from galaxyPoint() / galaxyMistPoint().
-const GALAXY_PALETTE = ['#fff1d6', '#ffc86b', '#cfe0ff', '#6f9bff', '#9a7bff', '#4fd6ff', '#ff6fb5', '#ffe08a'];
+const GALAXY_PALETTE_STD = Object.freeze(['#fff1d6', '#ffc86b', '#cfe0ff', '#6f9bff', '#9a7bff', '#4fd6ff', '#ff6fb5', '#ffe08a']);
 // 0 warm white, 1 amber gold (old bar and bulge stars), 2 pale blue, 3 blue (young), 4 violet (rim), 5 cyan (young), 6 pink (HII regions), 7 pale yellow (bulge)
+const GALAXY_PALETTE = GALAXY_PALETTE_STD.slice();   // the colours in use: the Appearance sheet can change them (applyLook)
+// What the Appearance sheet has chosen for the cloud: its form (GALAXY_FORMS) and the colour of the dust. shape and colour count the
+// changes, so what is built from the cloud or its colours (cloudSoA, the draw lists, the GPU buffers, the agent stars) knows to rebuild.
+const GALAXY_LOOK = { form: 'spiral', dust: '#0a0618', shape: 0, colour: 0 };
 const GALAXY_ARMS = 4;      // number of spiral arms: 2 major (0, 2) and 2 minor (1, 3)
 const GALAXY_ARM_W = [1, 0.55, 1, 0.55];   // star share of each arm
 const GALAXY_ARM_END = [0.97, 0.8, 0.97, 0.8];   // radius at which each arm ends (the minor ones are shorter)
@@ -7600,15 +7663,96 @@ function galaxyMistPoint(role, j, rnd) {
   if (role === ROLE_DUST) br *= clamp(r / 0.3, 0.12, 1);   // no dark specks in the glare of the core
   return { x, y, z, r, ci, sp: rigid ? GALAXY_PATTERN * (0.997 + rnd() * 0.006) : galaxySpeed(r) * (0.985 + rnd() * 0.03), sz, ph: rnd() * TAU, br, arm, role };
 }
-function buildCloud(n) {
+
+// The other forms of the cloud, chosen in the Appearance sheet. Same particles as the spiral: the same role at the same index, sizes,
+// brightness and colour indices in the same ranges, every 24th star a bright cluster star outside the centre. So the painters, the
+// flights and Atlas work unchanged; a star may become an agent when it lies outside the centre (arm >= 0, see pickAgentStars).
+const GALAXY_FORMS = ['spiral', 'cloud', 'ring', 'elliptical', 'swirl'];
+let GALAXY_LUMPS = null;
+// Fixed once (own generator): the lumps of the cloud (centre, size, weight, colours), the knots of the ring and of the swirl's arms
+function galaxyLumps() {
+  if (GALAXY_LUMPS) return GALAXY_LUMPS;
+  let s = 40961021;
+  const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const fams = [[7, 1, 0, 7], [6, 6, 0, 4], [3, 2, 5, 0], [4, 6, 3], [5, 2, 3, 0], [6, 4, 0], [1, 7, 0, 6], [2, 3, 0, 5], [3, 5, 2]];
+  const cloud = fams.map((ci, k) => {
+    const r = k ? 0.3 + 0.42 * rnd() : 0, th = (k + 0.6 * rnd()) * TAU / 8, u = rnd() * 2 - 1, q = Math.sqrt(1 - u * u);   // spread round the centre, so the lumps stay apart
+    return { x: Math.cos(th) * q * r, y: u * r * 0.6, z: Math.sin(th) * q * r, s: k ? 0.07 + 0.07 * rnd() : 0.13, w: k ? 0.6 + 0.8 * rnd() : 1.2, ci };
+  });
+  const ring = Array.from({ length: 22 }, () => ({ th: rnd() * TAU, r: 0.74 + (rnd() - 0.5) * 0.06, s: 0.02 + 0.025 * rnd(), hii: rnd() < 0.5 }));
+  const swirl = Array.from({ length: 28 }, () => ({ a: rnd() < 0.5 ? 0 : 1, r: 0.25 + 0.65 * rnd(), s: 0.02 + 0.025 * rnd(), hii: rnd() < 0.55 }));
+  return (GALAXY_LUMPS = { cloud, ring, swirl, wsum: cloud.reduce((t, c) => t + c.w, 0) });
+}
+const swirlAngle = (a, r) => 0.4 + a * Math.PI + 3.2 * Math.log(Math.max(r, 0.05) / 0.12);   // the swirl's two arms: logarithmic, no bar
+// Particle k of a role in one of the other forms (galaxyPoint / galaxyMistPoint are the spiral); rnd: the role's seeded generator
+function galaxyFormPoint(form, role, k, rnd) {
+  const g = () => (rnd() + rnd() + rnd() - 1.5) * 2, pick = a => a[Math.floor(rnd() * a.length)], L = galaxyLumps();
+  const sphere = r => { const w = rnd() * 2 - 1, th = rnd() * TAU, q = Math.sqrt(1 - w * w); return [Math.cos(th) * q * r, w * r, Math.sin(th) * q * r]; };
+  const star = role === ROLE_STAR, glow = role === ROLE_GLOW, dust = role === ROLE_DUST, bright = star && k % 24 === 7;
+  const u = star ? rnd() : (k * 0.6180339887 + 0.137) % 1;   // the component: random for a star, low-discrepancy for the diffuse ones (any prefix keeps the shares)
+  let x = 0, y = 0, z = 0, ci = 0, sz = 1, br = 1, rigid = false;
+  const put = (p, fy) => { x = p[0]; y = p[1] * fy; z = p[2]; };
+  const flat = (r, th, hy) => { x = Math.cos(th) * r; z = Math.sin(th) * r; y = hy; };
+  const warm = () => pick([7, 1, 0, 7, 0]);
+  // size and brightness: a star like galaxyPoint's arm stars, glow and dust in units of their base size (GLOW_K / DUST_K)
+  const look = (s0, s1, b0, b1) => { sz = s0 + (s1 - s0) * Math.pow(rnd(), 2); br = b0 + (b1 - b0) * rnd(); };
+  if (form === 'cloud') {   // a nebula: soft lumps of colour, no disc and no arms
+    let v = rnd() * L.wsum, c = L.cloud[0];
+    for (const q of L.cloud) if ((v -= q.w) <= 0) { c = q; break; }
+    if (star && u < 0.14) { put(sphere(0.95 * Math.sqrt(rnd())), 1); ci = pick([0, 2, 0, 7]); look(0.55, 1.1, 0.15, 0.4); }   // a thin field of stars all round
+    else if (dust) { const d = sphere(c.s * (1.1 + 0.5 * rnd())); x = c.x + d[0]; y = c.y + d[1] * 0.7; z = c.z + d[2]; look(0.7, 1.2, 0.3, 0.75); }   // dark filaments round the lumps
+    else {
+      const f = glow ? 1.15 : 1;
+      x = c.x + g() * c.s * f; y = c.y + g() * c.s * 0.7 * f; z = c.z + g() * c.s * f; ci = pick(c.ci);
+      if (glow) look(1, 2.6, 0.2, 0.55); else look(0.7, 2, 0.35, 1);
+    }
+  } else if (form === 'ring') {   // a ring galaxy: a small round core, a bright ring of young stars, almost nothing between
+    if (dust) { if (u < 0.75) flat(0.66 + 0.025 * g(), rnd() * TAU, g() * 0.01); else flat(0.25 + 0.35 * rnd(), rnd() * TAU, g() * 0.01); look(0.6, 1.1, 0.3, 0.8); if (u >= 0.75) br *= 0.4; }
+    else if (u < 0.17) { put(sphere(0.15 * Math.pow(rnd(), glow ? 0.8 : 1.5)), 0.8); ci = warm(); if (glow) look(0.9, 1.5, 0.25, 0.45); else look(0.9, 1.6, 0.7, 1); }
+    else if (u < 0.27) { const c = pick(L.ring); flat(c.r + g() * c.s, c.th + g() * c.s / c.r, g() * 0.01); ci = c.hii ? 6 : 3; if (glow) look(0.8, 1.4, 0.45, 0.85); else look(0.9, 2, 0.6, 0.9); }
+    else if (u < 0.9) { flat(0.74 + 0.04 * g(), rnd() * TAU, g() * 0.018); ci = pick([3, 2, 5, 0, 2, 3, 4]); if (glow) look(0.9, 1.6, 0.3, 0.6); else look(0.8, 2.1, 0.45, 1); }
+    else if (u < 0.95) { flat(0.18 + 0.42 * rnd(), rnd() * TAU, g() * 0.015); ci = pick([2, 0, 7]); if (glow) look(1, 1.6, 0.06, 0.14); else look(0.55, 1, 0.12, 0.3); }
+    else { put(sphere(0.5 + 0.45 * rnd()), 1); ci = pick([2, 0, 3]); if (glow) look(2, 2.9, 0.08, 0.16); else look(0.6, 1.2, 0.2, 0.4); }
+  } else if (form === 'elliptical') {   // smooth and old: a flattened ball of warm light, bright in the middle, next to no dust
+    const r = (glow ? 0.9 : 0.97) * Math.pow(rnd(), glow ? 1.4 : 1.9), p = sphere(r), e = 1 - r;
+    x = p[0]; y = p[1] * 0.62; z = p[2] * 0.82; ci = r < 0.3 ? warm() : pick([0, 7, 1, 2, 0]);
+    if (dust) look(0.6, 1.1, 0.04, 0.1); else if (glow) look(1.2, 2.8, 0.12 + 0.3 * e, 0.2 + 0.4 * e); else look(0.6, 1.6, 0.3 + 0.5 * e, 0.5 + 0.5 * e);
+  } else {   // swirl: a grand-design spiral, two long open arms without a bar and knots of young stars along them
+    const arm = () => (rnd() < 0.5 ? 0 : 1), onArm = (a, r, off) => { flat(r, swirlAngle(a, r) + off * (0.09 + 0.07 * r), g() * 0.016 * (1.2 - 0.6 * r)); rigid = true; };
+    if (dust) { onArm(arm(), 0.16 + 0.75 * Math.pow(rnd(), 1.1), -1.1 + 0.3 * g()); look(0.6, 1.2, 0.35, 0.9); }
+    else if (u < 0.13) { put(sphere(0.17 * Math.pow(rnd(), glow ? 0.9 : 1.6)), 0.7); ci = warm(); if (glow) look(0.9, 1.4, 0.2, 0.45); else look(0.9, 1.7, 0.7, 1); }
+    else if (u < 0.23) { const c = pick(L.swirl); onArm(c.a, c.r + g() * c.s, g() * 0.3); ci = c.hii ? 6 : pick([3, 5]); if (glow) look(0.8, 1.4, 0.45, 0.85); else look(0.9, 2, 0.6, 0.9); }
+    else if (u < 0.7) {
+      const r = 0.12 + 0.85 * Math.pow(rnd(), 0.85);
+      onArm(arm(), r, g()); ci = r < 0.4 ? pick([0, 7, 0, 2]) : pick([2, 3, 2, 0, 5, r > 0.75 ? 4 : 3]);
+      if (glow) look(0.9, 2.2, 0.3, 0.7); else look(0.8, 2.3, 0.45, 1);
+    } else if (u < 0.95) {
+      const r = Math.min(0.96, -0.3 * Math.log(1 - rnd() * 0.97));
+      flat(r, rnd() * TAU, g() * 0.014); ci = rnd() < clamp(1.25 - 1.9 * r, 0, 1) ? warm() : pick([2, 0, 3]);
+      if (glow) look(0.95, 1.9, 0.12, 0.3); else look(0.55, 1.05, 0.22, 0.5);
+    } else { put(sphere(0.4 + 0.55 * rnd()), 1); ci = pick([1, 0, 2]); if (glow) look(2.2, 2.9, 0.08, 0.16); else look(0.8, 1.4, 0.25, 0.4); }
+  }
+  let r = Math.hypot(x, y, z);
+  if (bright) {   // a cluster star: bright and outside the centre, so it can become an agent
+    if (r < 0.4) { if (r < 1e-3) { x = 1; y = z = 0; r = 1; } const f = (0.4 + 0.5 * rnd()) / r; x *= f; y *= f; z *= f; r *= f; }
+    sz = 1.8 + rnd() * 0.8; br = 1; ci = form === 'elliptical' ? pick([0, 7, 1, 2]) : pick([3, 3, 0, 2, 5, 6]);
+  }
+  if (r > 0.99) { const f = 0.99 / r; x *= f; y *= f; z *= f; r = 0.99; }
+  if (dust) br *= clamp(r / 0.3, 0.12, 1);   // no dark specks in the glare of the core
+  return { x, y, z, r, ci, sp: rigid ? GALAXY_PATTERN * (0.997 + rnd() * 0.006) : galaxySpeed(r) * (0.985 + rnd() * 0.03), sz, ph: rnd() * TAU, br, arm: star && r >= 0.4 ? 0 : -1, role };
+}
+// The whole cloud: n particles of a form (GALAXY_FORMS; the spiral when it is left out)
+function buildCloud(n, form) {
+  const alt = !!form && form !== 'spiral' && GALAXY_FORMS.includes(form);
   let s = 20260810;
   const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
   const pts = [], stars = Math.min(n, GALAXY_STARS);
-  for (let i = 0; i < stars; i++) pts.push(galaxyPoint(i, rnd));
+  for (let i = 0; i < stars; i++) pts.push(alt ? galaxyFormPoint(form, ROLE_STAR, i, rnd) : galaxyPoint(i, rnd));
   // the diffuse particles come from their own generators, so the stars are the same whatever the total
   let sg = 51873207, sd = 90210317, jg = 0, jd = 0;
   const rg = () => { sg = (sg * 16807) % 2147483647; return sg / 2147483647; }, rd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
-  for (let i = stars; i < n; i++) pts.push(galaxyRole(i) === ROLE_DUST ? galaxyMistPoint(ROLE_DUST, jd++, rd) : galaxyMistPoint(ROLE_GLOW, jg++, rg));
+  const mist = (role, j, r) => (alt ? galaxyFormPoint(form, role, j, r) : galaxyMistPoint(role, j, r));
+  for (let i = stars; i < n; i++) pts.push(galaxyRole(i) === ROLE_DUST ? mist(ROLE_DUST, jd++, rd) : mist(ROLE_GLOW, jg++, rg));
   return pts;
 }
 
@@ -7794,10 +7938,11 @@ function syncPromo(A, sim, m, dt) {
 const CLOUD_SOA = new WeakMap();
 function cloudSoA(cloud) {
   let s = CLOUD_SOA.get(cloud);
-  if (!s) {
+  if (!s || s.shape !== GALAXY_LOOK.shape) {   // the page's cloud is rewritten in place when its form changes (applyLook)
     const n = cloud.length;
     s = { x: new Float64Array(n), y: new Float64Array(n), z: new Float64Array(n), sp: new Float64Array(n), c: new Float64Array(n), s: new Float64Array(n) };
     for (let i = 0; i < n; i++) { const p = cloud[i]; s.x[i] = p.x; s.y[i] = p.y; s.z[i] = p.z; s.sp[i] = p.sp; s.c[i] = Math.cos(p.ph); s.s[i] = Math.sin(p.ph); }
+    s.shape = GALAXY_LOOK.shape;
     CLOUD_SOA.set(cloud, s);
   }
   return s;
@@ -7860,9 +8005,9 @@ function stepOrbSim(sim, m, dt, K, D, target, push) {
 // ---- end of the galaxy model
 
 // Glow dots: prerendered once per color (64 px, so they stay crisp on high-DPI screens and when
-// zoomed): a sharply outlined bright core with a thin halo instead of a blurry blob
-function glowSprite(c) {
-  const n = 64, cv = document.createElement('canvas'); cv.width = cv.height = n;
+// zoomed): a sharply outlined bright core with a thin halo instead of a blurry blob. into: repaint that canvas (a new colour, same sprite)
+function glowSprite(c, into) {
+  const n = 64, cv = into || document.createElement('canvas'); cv.width = cv.height = n;
   const g = cv.getContext('2d'), [r, gg, b] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), gr = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
   const st = (o, a) => gr.addColorStop(o, 'rgba(' + r + ',' + gg + ',' + b + ',' + a + ')');
   st(0, 1); st(0.14, 1); st(0.2, 0.92); st(0.27, 0.4); st(0.42, 0.14); st(0.65, 0.04); st(1, 0);
@@ -7871,9 +8016,9 @@ function glowSprite(c) {
   return cv;
 }
 // Soft sprite of a diffuse particle (glow in its color, dust in blue-black): a smooth bell, no core, no outline. One per color,
-// drawn scaled; a particle is just this sprite at its size and alpha.
-function mistSprite(c) {
-  const n = 64, cv = document.createElement('canvas'); cv.width = cv.height = n;
+// drawn scaled; a particle is just this sprite at its size and alpha. into: as glowSprite
+function mistSprite(c, into) {
+  const n = 64, cv = into || document.createElement('canvas'); cv.width = cv.height = n;
   const g = cv.getContext('2d'), [r, gg, b] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), gr = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
   [[0, 1], [0.12, 0.9], [0.25, 0.66], [0.4, 0.38], [0.55, 0.18], [0.7, 0.07], [0.85, 0.02], [1, 0]].forEach(([o, a]) => gr.addColorStop(o, 'rgba(' + r + ',' + gg + ',' + b + ',' + a + ')'));
   g.fillStyle = gr; g.fillRect(0, 0, n, n);
@@ -7881,21 +8026,24 @@ function mistSprite(c) {
 }
 // The galaxy: one deterministic cloud shared by the stage, the flights and the Atlas view (index i is the same star everywhere).
 let GALAXY = null;
-const galaxyCloud = () => GALAXY || (GALAXY = buildCloud(GALAXY_N));
+const galaxyCloud = () => GALAXY || (GALAXY = buildCloud(GALAXY_N, GALAXY_LOOK.form));
 let ORB_SPR = null;
 // Dots, colors, sprites and draw lists. Drawn by the home page, the flights and the Atlas view. flakes: halo stars (home page only)
 function makeOrbCloud(flakes) {
   const cloud = galaxyCloud();
-  if (!ORB_SPR) ORB_SPR = { spr: GALAXY_PALETTE.map(glowSprite), sprG: HOME_PALETTE.map(glowSprite), sprW: glowSprite('#ffffff'), mist: GALAXY_PALETTE.map(mistSprite), dust: mistSprite('#0a0618') };
-  // per role (and per color) the indices in ascending order: a pass binds the sprite once per color and stops at the budget prefix
+  if (!ORB_SPR) ORB_SPR = { spr: GALAXY_PALETTE.map(c => glowSprite(c)), sprG: HOME_PALETTE.map(c => glowSprite(c)), sprW: glowSprite('#ffffff'), mist: GALAXY_PALETTE.map(c => mistSprite(c)), dust: mistSprite(GALAXY_LOOK.dust) };
+  return orbLists({ cloud, spr: ORB_SPR.spr, sprG: ORB_SPR.sprG, sprW: ORB_SPR.sprW, sprMist: ORB_SPR.mist, sprDust: ORB_SPR.dust, flakes: flakes || [], sim: makeOrbSim(cloud.length) });
+}
+// Per role (and per color) the indices in ascending order: a pass binds the sprite once per color and stops at the budget prefix.
+// Built again when the form of the cloud changes (a particle's colour index changes with it; drawCloudScene asks).
+function orbLists(oc) {
   const lists = GALAXY_PALETTE.map(() => []), glow = GALAXY_PALETTE.map(() => []), dust = [], bright = [];
-  cloud.forEach((p, i) => {
+  oc.cloud.forEach((p, i) => {
     if (p.role === ROLE_GLOW) glow[p.ci].push(i);
     else if (p.role === ROLE_DUST) dust.push(i);
     else { lists[p.ci].push(i); if (isBrightOrb(i)) bright.push(i); }
   });
-  return { cloud, spr: ORB_SPR.spr, sprG: ORB_SPR.sprG, sprW: ORB_SPR.sprW, sprMist: ORB_SPR.mist, sprDust: ORB_SPR.dust, byCi: lists.map(l => Uint16Array.from(l)),
-    glowBy: glow.map(l => Uint16Array.from(l)), dustIdx: Uint16Array.from(dust), bright: Uint16Array.from(bright), flakes: flakes || [], sim: makeOrbSim(cloud.length) };
+  return Object.assign(oc, { byCi: lists.map(l => Uint16Array.from(l)), glowBy: glow.map(l => Uint16Array.from(l)), dustIdx: Uint16Array.from(dust), bright: Uint16Array.from(bright), shape: GALAXY_LOOK.shape });
 }
 
 // Drawing the particles (additive: the order is irrelevant). o: CR reference radius (depth), t time, amul brightness, sz dot size,
@@ -8105,6 +8253,7 @@ const FQ = [0, 0, 0];
 function drawCloudScene(ctx, oc, o) {
   const { ox, oy, CR, t, rot, glow, fa, sz } = o, fade = o.fade === undefined ? 1 : o.fade;
   if (fade <= 0) return;
+  if (oc.shape !== GALAXY_LOOK.shape) orbLists(oc);
   ctx.globalCompositeOperation = 'lighter';
   const amul = (o.amul === undefined ? Math.min(1.6, glow) : o.amul) * fade, sim = oc.sim;
   if (glxScene(ctx, oc, o, amul, fade)) return;   // painted by the graphics card (see the GPU painter below); this is the canvas version
@@ -8269,13 +8418,11 @@ function glxInit() {
       gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0); gl.vertexAttribDivisor(l, 1);
       return l;
     };
-    // particles: one VAO, the static attributes once, positions and weights every frame
-    const st = new Float32Array(N * 4);
-    cloud.forEach((p, i) => { st[i * 4] = p.br; st[i * 4 + 1] = p.sz; st[i * 4 + 2] = p.ph; st[i * 4 + 3] = p.ci + 16 * p.role + (isBrightOrb(i) ? 64 : 0); });
+    // particles: one VAO, the static attributes per form (glxLook), positions and weights every frame
     const vaoP = gl.createVertexArray(); gl.bindVertexArray(vaoP);
     const dyn = () => buf(N * 4, gl.DYNAMIC_DRAW);
-    const B = { x: dyn(), y: dyn(), z: dyn(), pw: dyn(), mix: dyn(), alt: dyn() };
-    attr(P, 'aS', 4, buf(st, gl.STATIC_DRAW));
+    const B = { x: dyn(), y: dyn(), z: dyn(), pw: dyn(), mix: dyn(), alt: dyn() }, bS = buf(N * 16, gl.STATIC_DRAW);
+    attr(P, 'aS', 4, bS);
     const LP = { aX: attr(P, 'aX', 1, B.x), aY: attr(P, 'aY', 1, B.y), aZ: attr(P, 'aZ', 1, B.z), aPw: attr(P, 'aPw', 1, B.pw), aMix: attr(P, 'aMix', 1, B.mix), aAlt: attr(P, 'aAlt', 1, B.alt) };
     // the small list: x, y, size, alpha | cell, r, g, b per instance
     const vaoQ = gl.createVertexArray(); gl.bindVertexArray(vaoQ);
@@ -8291,28 +8438,44 @@ function glxInit() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-    const up = (cell, img) => gl.texSubImage2D(gl.TEXTURE_2D, 0, (cell % GLX_COLS) * GLX_CELL, Math.floor(cell / GLX_COLS) * GLX_CELL, gl.RGBA, gl.UNSIGNED_BYTE, img);
-    ORB_SPR.spr.forEach((c, i) => up(i, c));
-    ORB_SPR.sprG.forEach((c, i) => up(GLX_C_AGENT + i, c));
-    up(GLX_C_WHITE, ORB_SPR.sprW);
-    ORB_SPR.mist.forEach((c, i) => up(GLX_C_MIST + i, c));
-    up(GLX_C_DUST, ORB_SPR.dust);
-    if (gl.getError() !== gl.NO_ERROR) return false;
+    ORB_SPR.sprG.forEach((c, i) => glxUp(gl, GLX_C_AGENT + i, c));   // the star, glow and dust sprites: glxLook
+    glxUp(gl, GLX_C_WHITE, ORB_SPR.sprW);
     gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.enable(gl.SCISSOR_TEST);
     gl.clearColor(0, 0, 0, 0);
-    const pal = new Float32Array(24);
-    DOT_PAL.slice(0, 8).forEach((c, i) => { pal[i * 3] = c[0] / 255; pal[i * 3 + 1] = c[1] / 255; pal[i * 3 + 2] = c[2] / 255; });
     Object.assign(GLX, {
-      gl, cv, N, P, Q, vaoP, vaoQ, bq, B, LP, tex, pal, max: Math.min(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096, 8192),
+      gl, cv, N, P, Q, vaoP, vaoQ, bq, B, bS, LP, tex, pal: new Float32Array(24), ls: -1, lc: -1, max: Math.min(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096, 8192),
       uP: U(P, ['uRes', 'uXf', 'uPass', 'uT', 'uCr', 'uAmul', 'uSz', 'uK', 'uA', 'uPal', 'uAtlas', 'uGLH']),
       uQ: U(Q, ['uRes', 'uXf', 'uAtlas', 'uGLH']),
     });
+    glxLook();
+    if (gl.getError() !== gl.NO_ERROR) return false;
     cv.addEventListener('webglcontextlost', e => { e.preventDefault(); GLX.state = -1; });
     GLX.state = 1;
     return true;
   } catch (e) {
     GLX.state = -1;
     return false;
+  }
+}
+// A sprite canvas into cell of the atlas (the texture is bound, premultiplied unpacking on)
+const glxUp = (gl, cell, img) => gl.texSubImage2D(gl.TEXTURE_2D, 0, (cell % GLX_COLS) * GLX_CELL, Math.floor(cell / GLX_COLS) * GLX_CELL, gl.RGBA, gl.UNSIGNED_BYTE, img);
+// What follows the Appearance sheet (applyLook): the per-particle attributes (brightness, size, phase, colour index, role, cluster flag)
+// when the form of the cloud changes; the star, glow and dust sprites and the colours of the small stars when the colours change
+function glxLook() {
+  const gl = GLX.gl;
+  if (GLX.ls !== GALAXY_LOOK.shape) {
+    const st = new Float32Array(GLX.N * 4);
+    GALAXY.forEach((p, i) => { st[i * 4] = p.br; st[i * 4 + 1] = p.sz; st[i * 4 + 2] = p.ph; st[i * 4 + 3] = p.ci + 16 * p.role + (isBrightOrb(i) ? 64 : 0); });
+    gl.bindBuffer(gl.ARRAY_BUFFER, GLX.bS); gl.bufferSubData(gl.ARRAY_BUFFER, 0, st);
+    GLX.ls = GALAXY_LOOK.shape;
+  }
+  if (GLX.lc !== GALAXY_LOOK.colour) {
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, GLX.tex); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    ORB_SPR.spr.forEach((c, i) => glxUp(gl, i, c));
+    ORB_SPR.mist.forEach((c, i) => glxUp(gl, GLX_C_MIST + i, c));
+    glxUp(gl, GLX_C_DUST, ORB_SPR.dust);
+    DOT_PAL.slice(0, 8).forEach((c, i) => { GLX.pal[i * 3] = c[0] / 255; GLX.pal[i * 3 + 1] = c[1] / 255; GLX.pal[i * 3 + 2] = c[2] / 255; });
+    GLX.lc = GALAXY_LOOK.colour;
   }
 }
 // Atlas cell of a sprite canvas that is not one of the fixed ones (the colours of the nodes of the Second Brain); -1: the atlas is full
@@ -8324,7 +8487,7 @@ function glxCell(img) {
   const gl = GLX.gl;
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, GLX.tex);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
-  gl.texSubImage2D(gl.TEXTURE_2D, 0, (c % GLX_COLS) * GLX_CELL, Math.floor(c / GLX_COLS) * GLX_CELL, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  glxUp(gl, c, img);
   GLX.cells.set(img, c);
   return c;
 }
@@ -8338,6 +8501,7 @@ function glxPush(x, y, s, a, cell, r, g, b) {
 // Paints one frame of the cloud like drawCloudScene does. amul: brightness (fade included), fade 0..1. false: not painted (use the canvas).
 function glxScene(ctx, oc, o, amul, fade) {
   if (GLX.state < 0 || (GLX.state === 0 && !glxInit()) || oc.cloud !== GALAXY) return false;
+  if (GLX.ls !== GALAXY_LOOK.shape || GLX.lc !== GALAXY_LOOK.colour) glxLook();
   const T = ctx.getTransform ? ctx.getTransform() : null;
   if (!T || T.b || T.c || !(T.a > 0) || !(T.d > 0)) return false;
   const W = ctx.canvas.width, H = ctx.canvas.height, gl = GLX.gl, sim = oc.sim, N = GLX.N;
@@ -8733,8 +8897,8 @@ function createHomeStage(view) {
   const sprite = glowSprite;
   const orb = makeOrbCloud(flakes), sim = orb.sim;
   const sprW = orb.sprW, sprO = sprite('#ffc861');
-  const BALL_GREY = '#a6a4c0';   // = --ball in the CSS
-  const sprGrey = sprite(BALL_GREY);
+  const BALL_GREY = LOOK.ball;   // = --ball in the CSS
+  const sprGrey = lookBallSprite();   // repainted in place when the colour of the balls changes
   const HOME_HL = '#ffd37a';   // the balls' only accent color: hover and focus
   const BALL_C = { html: BALL_GREY, md: BALL_GREY, job: BALL_GREY, skill: BALL_GREY };   // matte grey
   const root = h('section', { class: 'hs', 'aria-label': 'Stage with balls and cloud' });
@@ -9053,7 +9217,7 @@ function createHomeStage(view) {
       if (!taken) stepOrbSim(fs, m, dt, K, orbDamp(K), target, null);   // after the handover the physics runs in the view
       ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.clearRect(0, 0, W, H);
-      ctx.globalAlpha = bgA; ctx.fillStyle = '#060712'; ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = bgA; ctx.fillStyle = lookSky(); ctx.fillRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'lighter';
       // far dots across the whole page: the stage becomes a space
       const dustOut = os ? sm((u - OS_REL) / 0.4) : reveal;
@@ -9302,7 +9466,7 @@ function returnHome(kind, focus) {
     stepOrbSim(fs, m, dt, K, orbDamp(K), target, null);
     ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
     ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.clearRect(0, 0, W, H);
-    ctx.globalAlpha = bgA; ctx.fillStyle = '#060712'; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = bgA; ctx.fillStyle = lookSky(); ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'lighter';
     if (geo) for (const q of geo.near) {   // far dots across the whole page, as on the outbound flight
       const tw = 0.5 + 0.5 * Math.sin(t * 0.9 + q.ph);
@@ -9901,6 +10065,247 @@ function tintPicker() {
   return group;
 }
 
+// ---- The look: what the Appearance sheet changes (the form and colours of the galaxy, the sky and the scenery, the icons). Stored as
+// ---- aos.look (JSON); the standard look stores nothing and changes nothing. Pure down to "end of the look model": the tests run it.
+const LOOK_ICONS = ['default', 'dark', 'clear', 'tinted'];
+const LOOK_STD = Object.freeze({ form: 'spiral', stars: GALAXY_PALETTE_STD, dust: '#0a0618', sky: '#000000', glow: Object.freeze(['#5a3fd0', '#2a4fd0', '#ff6fb5']), icons: 'default', iconTint: '', ball: '#a6a4c0' });
+// The colours of the galaxy in the order of the sheet, with their index in GALAXY_PALETTE ('dust': the dark lanes)
+const LOOK_WELLS = [[7, 'Core'], [1, 'Old stars'], [0, 'Warm stars'], [2, 'Pale stars'], [3, 'Young stars'], [5, 'Clusters'], [6, 'Nebulae'], [4, 'Rim'], ['dust', 'Dust']];
+const LOOK_FORM_NAMES = { spiral: 'Spiral', cloud: 'Cloud', ring: 'Ring', elliptical: 'Elliptical', swirl: 'Swirl' };
+const LOOK_ICON_NAMES = { default: 'Default', dark: 'Dark', clear: 'Clear', tinted: 'Tinted' };
+// Palettes of the galaxy: id, name, the eight star colours in GALAXY_PALETTE order (warm white, gold, pale blue, blue, violet, cyan, pink,
+// pale yellow) and the dust. The first is the standard.
+const LOOK_PRESETS = [
+  ['milky', 'Milky Way', GALAXY_PALETTE_STD, '#0a0618'],
+  ['ember', 'Ember', ['#fff0e0', '#ff9a3c', '#ffd6b8', '#ff5e3a', '#d0306a', '#ffb74d', '#ff3d71', '#ffe0a0'], '#140404'],
+  ['ice', 'Ice', ['#f2f8ff', '#bfe3ff', '#dff4ff', '#5fb4ff', '#7a8cff', '#7ff3ff', '#b8c7ff', '#e8f6ff'], '#020814'],
+  ['aurora', 'Aurora', ['#eafff4', '#7dffb2', '#c8fff0', '#2fe6a8', '#7a5cff', '#3ddcff', '#ff6fd8', '#d4ffb0'], '#02100a'],
+  ['neon', 'Neon', ['#ffe6ff', '#ff9de2', '#e0c8ff', '#7b5cff', '#c03cff', '#2de2ff', '#ff2a8a', '#ffd1f0'], '#0c0216'],
+  ['gold', 'Gold', ['#fff4dc', '#ffbf47', '#fff0c4', '#ffd27a', '#d99a3a', '#ffe7a3', '#ff9f5a', '#ffe08a'], '#120c02'],
+  ['silver', 'Silver', ['#ffffff', '#d9d9de', '#ececf2', '#b8b8c4', '#8e8e9a', '#f4f4f8', '#c8c8d2', '#f0f0f0'], '#050508'],
+];
+const lookHex = (v, d) => (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : d);
+// A whole look from anything (parsed JSON, a partial object, rubbish): every field valid, the standard wherever it is not
+function lookNorm(o) {
+  const S = LOOK_STD, list = (a, d) => d.map((c, i) => lookHex(Array.isArray(a) ? a[i] : null, c));
+  o = o && typeof o === 'object' ? o : {};
+  return { form: GALAXY_FORMS.includes(o.form) ? o.form : S.form, stars: list(o.stars, S.stars), dust: lookHex(o.dust, S.dust), sky: lookHex(o.sky, S.sky),
+    glow: list(o.glow, S.glow), icons: LOOK_ICONS.includes(o.icons) ? o.icons : S.icons, iconTint: lookHex(o.iconTint, ''), ball: lookHex(o.ball, S.ball) };
+}
+function lookParse(s) { try { return lookNorm(JSON.parse(s)); } catch (e) { return lookNorm(null); } }
+// The parts of the sheet; each has its own "Standard"
+const LOOK_PARTS = { form: ['form'], galaxy: ['stars', 'dust'], scenery: ['sky', 'glow'], icons: ['icons', 'iconTint', 'ball'] };
+const lookIsStd = (L, part) => (part ? LOOK_PARTS[part] : Object.keys(LOOK_STD)).every(k => JSON.stringify(L[k]) === JSON.stringify(LOOK_STD[k]));
+const lookPreset = L => (LOOK_PRESETS.find(p => p[3] === L.dust && p[2].every((c, i) => c === L.stars[i])) || [null])[0];
+// --space of the dark themes and the space views (section 1) with other glows: [centre, top right, bottom left] as hex. The same
+// gradients in the same legacy rgba() form as the CSS (a color() would render a hair differently); the three tiny stars stay.
+const LOOK_NEB = ['#503cb4', '#4fd6ff', '#ff6fb5'];   // the glows of --space as the CSS has them: violet centre, cyan top right, pink bottom left
+const LOOK_SPACE_STARS = 'radial-gradient(1px 1px at 23px 41px, rgba(255,255,255,.55), transparent), radial-gradient(1px 1px at 97px 113px, rgba(255,225,180,.45), transparent), radial-gradient(1.2px 1.2px at 151px 29px, rgba(180,200,255,.5), transparent)';
+function lookSpace(neb) {
+  const rgba = (hex, a) => 'rgba(' + [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(',') + ',' + a + ')';
+  return 'radial-gradient(ellipse 55% 45% at 50% 40%, ' + rgba(neb[0], '.2') + ', transparent 70%), radial-gradient(ellipse 35% 30% at 12% 85%, ' + rgba(neb[2], '.07') +
+    ', transparent 70%), radial-gradient(ellipse 35% 30% at 90% 12%, ' + rgba(neb[1], '.06') + ', transparent 70%), ' + LOOK_SPACE_STARS;
+}
+// The CSS of a look: custom properties over the themes' (!important, so they win wherever a theme sets them). Empty for the standard look,
+// which therefore changes nothing. The sky is the page behind the space views (home, Atlas, Second brain) and the deep space of every
+// stage. Glow i is aurora disc i of the home page (violet, blue, pink) and the glow of --space in the same place (centre, top right, bottom left).
+function lookCss(L) {
+  const S = LOOK_STD, all = [], space = [], out = [];
+  const rule = (sel, d) => sel + ' { ' + d.map(x => x + ' !important;').join(' ') + ' }';
+  if (L.sky !== S.sky) { all.push('--void: ' + L.sky); space.push('--sky: ' + L.sky); }
+  L.glow.forEach((c, i) => { if (c !== S.glow[i]) all.push('--aurora-' + (i + 1) + ': ' + c); });
+  if (L.ball !== S.ball) all.push('--ball: ' + L.ball);
+  if (L.icons === 'tinted' && L.iconTint) all.push('--icon-tint: ' + L.iconTint);
+  if (all.length) out.push(rule(':root, body', all));
+  if (L.glow.some((c, i) => c !== S.glow[i])) {
+    const sp = '--space: ' + lookSpace(L.glow.map((c, i) => (c !== S.glow[i] ? c : LOOK_NEB[i])));
+    space.push(sp);
+    out.push(rule(':root[data-theme="dark"]', [sp]), '@media (prefers-color-scheme: dark) { ' + rule(':root:not([data-theme="light"])', [sp]) + ' }');
+  }
+  if (space.length) out.push(rule('body:is(.is-home, .is-brain, .is-atlas)', space));
+  return out.join('\n');
+}
+// Relative luminance (sRGB, WCAG) of a colour: a sky above LOOK_LIGHT leaves white text under 4.5:1, and the sheet says so
+function lookLum(hex) {
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+const LOOK_LIGHT = 1.05 / 4.5 - 0.05;
+// ---- end of the look model
+
+let LOOK = lookNorm(null), lookStyle = null;
+const LOOK_SPR = { ball: null };
+const lookSky = () => (LOOK.sky === LOOK_STD.sky ? '#060712' : LOOK.sky);   // what the canvases fill deep space with
+const lookBallSprite = () => LOOK_SPR.ball || (LOOK_SPR.ball = glowSprite(LOOK.ball));
+// Makes a look the page's. The galaxy changes in place: its colours (the palette, the sprites; the GPU painter uploads them when it sees
+// GALAXY_LOOK.colour change) and its form (every particle gets its new target and flies there; the draw lists, the GPU buffers and the
+// agent stars follow GALAXY_LOOK.shape). The rest is CSS (lookCss) and html[data-icons]. save: store it (the standard look: nothing).
+function applyLook(next, save) {
+  const prev = LOOK;
+  LOOK = lookNorm(next);
+  if (LOOK.dust !== prev.dust || LOOK.stars.some((c, i) => c !== prev.stars[i])) {
+    LOOK.stars.forEach((c, i) => { GALAXY_PALETTE[i] = c; DOT_PAL[i] = [1, 3, 5].map(k => parseInt(c.slice(k, k + 2), 16)); });
+    GALAXY_LOOK.dust = LOOK.dust;
+    if (ORB_SPR) {
+      LOOK.stars.forEach((c, i) => { if (c !== prev.stars[i]) { glowSprite(c, ORB_SPR.spr[i]); mistSprite(c, ORB_SPR.mist[i]); } });
+      if (LOOK.dust !== prev.dust) mistSprite(LOOK.dust, ORB_SPR.dust);
+    }
+    GALAXY_LOOK.colour++;
+  }
+  if (LOOK.form !== prev.form) {
+    GALAXY_LOOK.form = LOOK.form;
+    if (GALAXY) buildCloud(GALAXY_N, LOOK.form).forEach((p, i) => Object.assign(GALAXY[i], p));
+    GALAXY_LOOK.shape++;
+  }
+  if (LOOK.ball !== prev.ball && LOOK_SPR.ball) glowSprite(LOOK.ball, LOOK_SPR.ball);
+  OS_C.bg = lookSky();
+  const css = lookCss(LOOK);
+  if (css && !lookStyle) lookStyle = document.head.appendChild(h('style', { id: 'aos-look' }));
+  // ponytail: the sky and the glows are custom properties at the root, so a change restyles the whole page (about 19 ms here, once per
+  // frame while one is dragged); set them on their few consumers instead if that ever matters
+  if (lookStyle && lookStyle.textContent !== css) lookStyle.textContent = css;
+  if (LOOK.icons !== prev.icons) { if (LOOK.icons === 'default') document.documentElement.removeAttribute('data-icons'); else document.documentElement.setAttribute('data-icons', LOOK.icons); }
+  if (save) store.set('look', lookIsStd(LOOK) ? '' : JSON.stringify(LOOK));
+  bus.emit('look', prev);
+}
+
+// A preview of a form: its first 2400 stars as the home page shows them (tilted, turned a little), in the colours in use, on the sky
+const LOOK_THUMB = new Map();
+function lookThumb(cv, form) {
+  let pts = LOOK_THUMB.get(form);
+  if (!pts) {
+    const rot = homeRot(6), q = [0, 0, 0];
+    pts = buildCloud(2400, form).map(p => { rotInto(rot, p.x, p.y, p.z, q); return [q[0], q[1], clamp((q[2] + 1) / 2, 0, 1), p.ci, p.br, p.sz]; }).sort((a, b) => a[3] - b[3]);
+    LOOK_THUMB.set(form, pts);
+  }
+  const dpr = Math.min(2, window.devicePixelRatio || 1), w = cv.clientWidth || 96, ht = cv.clientHeight || 64;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(ht * dpr); }
+  const ctx = cv.getContext('2d'), R = Math.min(w / 2, ht / 1.5) * 0.92;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1; ctx.fillStyle = lookSky(); ctx.fillRect(0, 0, w, ht);
+  ctx.globalCompositeOperation = 'lighter';
+  let ci = -1;
+  for (const p of pts) {
+    if (p[3] !== ci) { ci = p[3]; ctx.fillStyle = GALAXY_PALETTE[ci]; }
+    const s = 0.5 + p[5] * 0.45;
+    ctx.globalAlpha = clamp(p[4] * (0.45 + 0.55 * p[2]), 0, 1);
+    ctx.fillRect(w / 2 + p[0] * R - s / 2, ht / 2 + p[1] * R - s / 2, s, s);
+  }
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+// The Appearance sheet (Customise menu): the form and the colours of the galaxy, the sky and the scenery, the icons. Every change shows
+// at once (the particles fly into the new form, the colours change under the sheet) and is stored when it is let go; every part has
+// its own way back to the standard, and the button at the bottom takes all of it back.
+let lookSheet = null;
+function openLookSheet(opener) {
+  if (lookSheet) { lookSheet.focus(); return; }
+  const wells = [];
+  let raf = 0, liveRaf = 0, livePatch = null, usedShape = -1, thumbKey = '', thumbAt = 0, thumbT = 0;
+  const set = (patch, save, live) => {
+    if (!live) { cancelAnimationFrame(liveRaf); liveRaf = 0; livePatch = null; }   // a click wins over a colour still waiting for its frame
+    applyLook(Object.assign({}, LOOK, patch), save); sync(live);
+  };
+  // a colour being dragged: the input events of a colour picker come faster than frames, so only the last one of a frame is applied
+  const live = patch => {
+    livePatch = Object.assign(livePatch || {}, patch);
+    if (!liveRaf) liveRaf = requestAnimationFrame(() => { liveRaf = 0; const p = livePatch; livePatch = null; set(p, false, true); });
+  };
+  const std = part => { const p = {}; LOOK_PARTS[part].forEach(k => { p[k] = LOOK_STD[k]; }); return p; };
+  const head = (title, part) => h('h3', { class: 'look-sh' }, h('span', null, title),
+    h('button', { type: 'button', class: 'look-std', 'data-part': part, title: 'Back to the standard ' + title.toLowerCase(), onclick: () => set(std(part), true) }, 'Standard'));
+  // a colour: shown while it is dragged, stored when it is let go
+  const well = (label, get, patch, attrs) => {
+    const inp = h('input', { type: 'color', value: get(), 'aria-label': label });
+    inp.addEventListener('input', () => live(patch(inp.value)));
+    inp.addEventListener('change', () => set(patch(inp.value), true));
+    const el = h('label', Object.assign({ class: 'look-well' }, attrs), inp, h('span', null, label));
+    wells.push([inp, get, el]);
+    return el;
+  };
+  // a radio group: one tab stop, the arrow keys move the choice (as the tint picker)
+  const radios = (cls, label, ids, make, pick) => {
+    const g = h('div', { class: cls, role: 'radiogroup', 'aria-label': label }, ids.map(id => {
+      const b = make(id);
+      b.setAttribute('role', 'radio'); b.dataset.id = id; b.addEventListener('click', () => pick(id));
+      return b;
+    }));
+    g.addEventListener('keydown', e => {
+      const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (!d) return;
+      e.preventDefault();
+      const bs = Array.from(g.children), i = Math.max(0, bs.findIndex(b => b.getAttribute('aria-checked') === 'true')), b = bs[(i + d + bs.length) % bs.length];
+      pick(b.dataset.id); b.focus();
+    });
+    return g;
+  };
+  const check = (g, cur) => Array.from(g.children).forEach((b, i) => { const on = b.dataset.id === cur; b.setAttribute('aria-checked', String(on)); b.tabIndex = on || (cur === null && i === 0) ? 0 : -1; });
+  const forms = radios('look-forms', 'Form of the galaxy', GALAXY_FORMS, id => h('button', { type: 'button', class: 'look-form' },
+    h('canvas', { 'aria-hidden': 'true' }), h('span', null, LOOK_FORM_NAMES[id]), id === 'spiral' ? h('small', null, 'Standard') : null), id => set({ form: id }, true));
+  const presets = radios('look-presets', 'Palette of the galaxy', LOOK_PRESETS.map(p => p[0]), id => {
+    const p = LOOK_PRESETS.find(x => x[0] === id), c = p[2];
+    return h('button', { type: 'button', class: 'look-preset' }, h('i', { 'aria-hidden': 'true', style: { '--sw': 'conic-gradient(' + [c[7], c[1], c[6], c[4], c[3], c[5], c[7]].join(', ') + ')' } }), p[1]);
+  }, id => { const p = LOOK_PRESETS.find(x => x[0] === id); set({ stars: p[2].slice(), dust: p[3] }, true); });
+  const galaxyWells = h('div', { class: 'look-wells' }, LOOK_WELLS.map(([k, label]) => well(label, () => (k === 'dust' ? LOOK.dust : LOOK.stars[k]),
+    v => (k === 'dust' ? { dust: v } : { stars: LOOK.stars.map((c, i) => (i === k ? v : c)) }), { 'data-ci': String(k) })));
+  const skyNote = h('p', { class: 'look-note', hidden: true }, 'A sky this light leaves the white text of the home page hard to read.');
+  const sceneryWells = h('div', { class: 'look-wells' }, well('Sky', () => LOOK.sky, v => ({ sky: v })),
+    [0, 1, 2].map(i => well('Glow ' + (i + 1), () => LOOK.glow[i], v => ({ glow: LOOK.glow.map((c, j) => (j === i ? v : c)) }))));
+  const accentHex = () => lookHex(getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(), '#0088ff');
+  const iconSegs = h('div', { class: 'os-segs look-segs', role: 'group', 'aria-label': 'Style of the app icons' },
+    LOOK_ICONS.map(id => h('button', { type: 'button', class: 'os-seg', 'data-id': id, onclick: () => set({ icons: id }, true) }, LOOK_ICON_NAMES[id])));
+  const tintWell = well('Icon colour', () => LOOK.iconTint || accentHex(), v => ({ iconTint: v }));
+  const preview = h('div', { class: 'look-icons', 'aria-hidden': 'true' }, ['today', 'os', 'agents', 'skills', 'artifacts', 'rings', 'links'].map(id => h('span', { class: 'app-ico', 'data-app': id }, tabIcon(id))));
+  const all = h('button', { type: 'button', class: 'btn', onclick: () => set(lookNorm(null), true) }, 'Back to the standard look');
+  const close = () => {
+    cancelAnimationFrame(raf); cancelAnimationFrame(liveRaf); clearTimeout(thumbT); offTheme(); root.remove(); lookSheet = null;
+    const back = opener && opener.isConnected ? opener : document.querySelector('.w-menu > summary');
+    if (back) back.focus();
+  };
+  const root = h('div', { class: 'look', role: 'dialog', 'aria-modal': 'false', 'aria-labelledby': 'look-t', tabindex: -1 },
+    h('div', { class: 'look-h' }, h('h2', { id: 'look-t' }, 'Appearance'),
+      h('button', { type: 'button', class: 'os-ibtn', title: 'Close (Esc)', 'aria-label': 'Close appearance', onclick: close }, strokeIcon(['M4 4l8 8', 'M12 4l-8 8'], 16))),
+    h('div', { class: 'look-body' },
+      h('section', { class: 'look-sec', 'aria-label': 'Galaxy' }, head('Galaxy', 'form'), forms),
+      h('section', { class: 'look-sec', 'aria-label': 'Colours of the galaxy' }, head('Colours', 'galaxy'), presets, galaxyWells),
+      h('section', { class: 'look-sec', 'aria-label': 'Sky and scenery' }, head('Sky and scenery', 'scenery'), sceneryWells, skyNote),
+      h('section', { class: 'look-sec', 'aria-label': 'Icons' }, head('Icons', 'icons'), iconSegs, preview, h('div', { class: 'look-wells' }, tintWell, well('Balls', () => LOOK.ball, v => ({ ball: v }))))),
+    h('div', { class: 'look-f' }, all));
+  // everything that shows the look follows it. live: a colour is being dragged, so no other well can have changed (and a hidden well
+  // is not read: the icon colour asks for the accent, which would restyle the page in the middle of the frame). The unused colours
+  // change with the form only; the previews with the sky and the star colours: at once after a click, about eight times a second
+  // while a colour is dragged (all five cost about 10 ms; the galaxy behind the sheet shows the colour every frame), and always the last.
+  const sync = live => {
+    check(forms, LOOK.form); check(presets, lookPreset(LOOK));
+    tintWell.hidden = LOOK.icons !== 'tinted';
+    if (!live) wells.forEach(([inp, get, el]) => { if (!el.hidden && document.activeElement !== inp) inp.value = get(); });
+    root.querySelectorAll('.look-std').forEach(b => { b.disabled = lookIsStd(LOOK, b.dataset.part); });
+    all.disabled = lookIsStd(LOOK);
+    iconSegs.querySelectorAll('.os-seg').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === LOOK.icons)));
+    skyNote.hidden = !(lookLum(LOOK.sky) > LOOK_LIGHT);
+    if (usedShape !== GALAXY_LOOK.shape) {
+      usedShape = GALAXY_LOOK.shape;
+      const used = new Set(galaxyCloud().map(p => p.ci));
+      galaxyWells.querySelectorAll('.look-well').forEach(el => {
+        const k = el.dataset.ci, off = k !== 'dust' && !used.has(+k);
+        el.classList.toggle('is-unused', off);
+        el.title = off ? 'The ' + LOOK_FORM_NAMES[LOOK.form] + ' form has no stars of this colour' : '';
+      });
+    }
+    if (!raf && !thumbT && thumbKey !== LOOK.sky + LOOK.stars.join('')) {
+      const draw = () => { raf = 0; thumbAt = performance.now(); thumbKey = LOOK.sky + LOOK.stars.join(''); forms.querySelectorAll('canvas').forEach((cv, i) => lookThumb(cv, GALAXY_FORMS[i])); };
+      const wait = live ? 120 - (performance.now() - thumbAt) : 0;
+      if (wait > 0) thumbT = setTimeout(() => { thumbT = 0; raf = requestAnimationFrame(draw); }, wait); else raf = requestAnimationFrame(draw);
+    }
+  };
+  const offTheme = bus.on('theme', sync);
+  root.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } });
+  document.body.append(root);
+  lookSheet = root;
+  sync();
+  (forms.querySelector('[aria-checked="true"]') || root).focus();
+}
+
 function applyTheme(mode) {
   state.theme = ['light', 'dark'].includes(mode) ? mode : 'auto';
   const root = document.documentElement;
@@ -10044,6 +10449,7 @@ function init() {
   // Theme first (even if the data is broken)
   const initialTheme = store.get('theme') || document.documentElement.getAttribute('data-theme') || 'dark';
   applyTint(store.get('tint') || 'blue');
+  applyLook(lookParse(store.get('look')), false);
   applyTheme(initialTheme);
   LG.init();
   driftAurora();

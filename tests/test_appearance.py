@@ -1,0 +1,226 @@
+"""Appearance: the forms of the galaxy, its colours, the sky, the scenery and the icons (openLookSheet, applyLook, aos.look).
+
+The forms and the look model are pure, so they run here under Node, as the galaxy tests do: every form must be a galaxy the painters,
+the flights and Atlas take unchanged, the spiral must stay exactly what it was, and the standard look must change nothing at all.
+"""
+
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+import tempfile
+import unittest
+
+import test_galaxy_transitions as G   # a module import: the class imported by name would run its tests a second time here
+from test_galaxy_transitions import FIXTURE, HTML, JS, MODEL, PAINT, PRELUDE
+
+LOOK = JS[JS.index("// ---- The look:"): JS.index("// ---- end of the look model")]
+FORMS = ["spiral", "cloud", "ring", "elliptical", "swirl"]
+# buildCloud(GALAXY_N) as it was before the other forms existed (every field to 9 decimals, sha256): the standard galaxy is untouched
+SPIRAL_SHA = "f31c1631fe31c2ff8045896cc9addbb7b9f989c360868ecfcce5c2f88f7c5ad1"
+
+
+@unittest.skipUnless(shutil.which("node"), "Node not installed")
+class AppearanceModelTests(unittest.TestCase):
+    def _run(self, body: str, paint: bool = False, raw: bool = False):
+        src = PRELUDE + MODEL + (PAINT if paint else "") + LOOK + FIXTURE + body
+        with tempfile.TemporaryDirectory() as d:
+            f = f"{d}/t.js"
+            with open(f, "w", encoding="utf-8") as fh:
+                fh.write(src)
+            r = subprocess.run(["node", f], capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip() if raw else json.loads(r.stdout)
+
+    # ---- the forms ---------------------------------------------------------------------------------------------------------------
+    def test_the_spiral_is_exactly_what_it_was(self):
+        out = self._run("""
+console.log(buildCloud(GALAXY_N).map(p => [p.x, p.y, p.z, p.r, p.ci, p.sp, p.sz, p.ph, p.br, p.arm, p.role].map(v => (+v).toFixed(9)).join(',')).join(';'));
+""", raw=True)
+        self.assertEqual(hashlib.sha256(out.encode()).hexdigest(), SPIRAL_SHA)
+        same = self._run("""
+const key = a => JSON.stringify(a);
+console.log(JSON.stringify({ spiral: key(buildCloud(GALAXY_N, 'spiral')) === key(buildCloud(GALAXY_N)),
+  unknown: key(buildCloud(GALAXY_N, 'blob')) === key(buildCloud(GALAXY_N)), forms: GALAXY_FORMS }));
+""")
+        self.assertTrue(same["spiral"])
+        self.assertTrue(same["unknown"])                  # a form the page does not know is the spiral
+        self.assertEqual(same["forms"], FORMS)
+
+    def test_every_form_is_a_whole_galaxy(self):
+        out = self._run("""
+const res = {};
+for (const form of GALAXY_FORMS) {
+  const a = buildCloud(GALAXY_N, form), b = buildCloud(GALAXY_N, form);
+  const picks = pickAgentStars(a, 40, T0).map(q => q.i), ci = new Set(a.map(p => p.ci));
+  res[form] = { n: a.length, same: JSON.stringify(a) === JSON.stringify(b),
+    roles: a.every((p, i) => p.role === galaxyRole(i)),
+    inside: a.every(p => Math.hypot(p.x, p.y, p.z) <= 0.9901 && Math.abs(p.r - Math.hypot(p.x, p.y, p.z)) < 1e-9),
+    fields: a.every(p => Number.isInteger(p.ci) && p.ci >= 0 && p.ci < 8 && p.br > 0 && p.br <= 1 && p.sz > 0 && isFinite(p.sp) && p.sp > 0 && isFinite(p.ph)),
+    bright: a.filter((p, i) => isBrightOrb(i)).every(p => p.r >= 0.4 - 1e-9 && p.arm >= 0),
+    agents: new Set(picks).size, agentsOk: picks.every(i => i < GALAXY_POOL && a[i].arm >= 0), colours: ci.size,
+    flat: a.slice(0, GALAXY_STARS).reduce((t, p) => t + Math.abs(p.y), 0) / GALAXY_STARS };
+}
+console.log(JSON.stringify(res));
+""")
+        for form in FORMS:
+            o = out[form]
+            with self.subTest(form=form):
+                self.assertEqual(o["n"], 11700)
+                self.assertTrue(o["same"])                # seeded: the same galaxy every time
+                self.assertTrue(o["roles"])               # stars, glow and dust at the indices the painters expect
+                self.assertTrue(o["inside"])
+                self.assertTrue(o["fields"])
+                self.assertTrue(o["bright"])              # the cluster stars lie outside the centre and can become agents
+                self.assertEqual(o["agents"], 40)         # Atlas finds its agents in every form
+                self.assertTrue(o["agentsOk"])
+                self.assertGreaterEqual(o["colours"], 4)
+        # they really are different shapes: the ring and the swirl are flat discs, the cloud and the elliptical are thick
+        self.assertLess(out["ring"]["flat"], out["cloud"]["flat"])
+        self.assertLess(out["swirl"]["flat"], out["elliptical"]["flat"])
+        self.assertEqual(len({round(out[f]["flat"], 4) for f in FORMS}), 5)
+
+    # ---- the look model ----------------------------------------------------------------------------------------------------------
+    def test_the_standard_look_changes_nothing(self):
+        out = self._run("""
+const std = lookNorm(null);
+console.log(JSON.stringify({ css: lookCss(std), isStd: lookIsStd(std), parts: Object.keys(LOOK_PARTS).every(p => lookIsStd(std, p)),
+  preset: lookPreset(std), std, keys: Object.keys(LOOK_STD).sort(), partKeys: [].concat(...Object.values(LOOK_PARTS)).sort(),
+  pal: JSON.stringify(GALAXY_PALETTE) === JSON.stringify(GALAXY_PALETTE_STD), dust: GALAXY_LOOK.dust === LOOK_STD.dust, form: GALAXY_LOOK.form }));
+""")
+        self.assertEqual(out["css"], "")                  # no style at all for the standard look
+        self.assertTrue(out["isStd"])
+        self.assertTrue(out["parts"])
+        self.assertEqual(out["preset"], "milky")
+        self.assertEqual(out["keys"], out["partKeys"])    # every field of a look belongs to exactly one part of the sheet
+        self.assertTrue(out["pal"])
+        self.assertTrue(out["dust"])
+        self.assertEqual(out["form"], "spiral")
+        self.assertEqual(out["std"]["sky"], "#000000")
+        self.assertEqual(out["std"]["icons"], "default")
+
+    def test_anything_stored_becomes_a_valid_look(self):
+        out = self._run("""
+const bad = [null, 7, 'x', [], { form: 'blob', stars: ['red', 3], dust: '#12', sky: 'javascript:1', glow: [1, '#ABCDEF'], icons: 'huge', iconTint: '</style>', ball: {} }];
+const res = bad.map(o => lookNorm(o));
+console.log(JSON.stringify({ res, parsed: [lookParse('{bad'), lookParse(''), lookParse(null), lookParse('{"form":"ring","sky":"#102030"}')],
+  std: lookNorm(null) }));
+""")
+        std = out["std"]
+        for L in out["res"][:4]:
+            self.assertEqual(L, std)
+        L = out["res"][4]
+        self.assertEqual(L["form"], "spiral")
+        self.assertEqual(L["stars"], std["stars"])
+        self.assertEqual((L["dust"], L["sky"], L["icons"], L["iconTint"], L["ball"]), (std["dust"], std["sky"], "default", "", std["ball"]))
+        self.assertEqual(L["glow"], [std["glow"][0], "#abcdef", std["glow"][2]])   # what is valid survives, lower-cased
+        self.assertEqual(out["parsed"][0], std)
+        self.assertEqual(out["parsed"][1], std)
+        self.assertEqual(out["parsed"][2], std)
+        self.assertEqual((out["parsed"][3]["form"], out["parsed"][3]["sky"]), ("ring", "#102030"))
+        # nothing but #rrggbb ever reaches the CSS
+        hexes = [c for L in out["res"] for c in L["stars"] + L["glow"] + [L["dust"], L["sky"], L["ball"]]]
+        self.assertTrue(all(re.fullmatch(r"#[0-9a-f]{6}", c) for c in hexes))
+
+    def test_a_changed_look_writes_only_what_changed(self):
+        out = self._run("""
+const L = o => Object.assign(lookNorm(null), o);
+console.log(JSON.stringify({
+  sky: lookCss(L({ sky: '#102030' })), ball: lookCss(L({ ball: '#ff0000' })),
+  glow: lookCss(L({ glow: ['#5a3fd0', '#2a4fd0', '#33ff99'] })),
+  tintOff: lookCss(L({ iconTint: '#00ff00' })), tintOn: lookCss(L({ icons: 'tinted', iconTint: '#00ff00' })),
+  space: lookSpace(LOOK_NEB), lum: [lookLum('#000000'), lookLum('#ffffff')], light: LOOK_LIGHT,
+  partly: [lookIsStd(L({ sky: '#102030' }), 'scenery'), lookIsStd(L({ sky: '#102030' }), 'galaxy'), lookIsStd(L({ form: 'ring' }), 'form')] }));
+""")
+        self.assertEqual(out["sky"], ":root, body { --void: #102030 !important; }\nbody:is(.is-home, .is-brain, .is-atlas) { --sky: #102030 !important; }")
+        self.assertEqual(out["ball"], ":root, body { --ball: #ff0000 !important; }")
+        self.assertEqual(out["tintOff"], "")              # a tint is only written while the icons are tinted
+        self.assertEqual(out["tintOn"], ":root, body { --icon-tint: #00ff00 !important; }")
+        g = out["glow"]
+        self.assertIn("--aurora-3: #33ff99 !important;", g)
+        self.assertNotIn("--aurora-1", g)
+        # the new --space, in each place a theme sets one, with the changed glow bottom left and the others as the CSS has them
+        self.assertEqual(g.count("--space: "), 3)
+        for sel in (':root[data-theme="dark"] {', '@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {', "body:is(.is-home, .is-brain, .is-atlas) {"):
+            self.assertIn(sel, g)
+        self.assertIn("rgba(51,255,153,.07)", g)
+        self.assertIn("rgba(80,60,180,.2)", g)
+        # lookSpace of the standard glows is, character for character, the --space of the CSS (so a changed glow changes only itself)
+        css_space = re.findall(r"--space: (radial-gradient\(ellipse 55%.*?);", HTML)
+        self.assertEqual(len(css_space), 3)
+        for s in css_space:
+            self.assertEqual(" ".join(s.split()), out["space"])
+        self.assertEqual(out["lum"], [0, 1])
+        self.assertAlmostEqual(out["light"], 1.05 / 4.5 - 0.05)
+        self.assertEqual(out["partly"], [False, True, False])
+
+    def test_presets_are_whole_palettes(self):
+        out = self._run("""
+console.log(JSON.stringify({ presets: LOOK_PRESETS.map(p => [p[0], p[1], p[2], p[3]]), std: GALAXY_PALETTE_STD, dust: LOOK_STD.dust,
+  wells: LOOK_WELLS.map(w => w[0]), found: LOOK_PRESETS.map(p => lookPreset(Object.assign(lookNorm(null), { stars: p[2].slice(), dust: p[3] }))) }));
+""")
+        ps = out["presets"]
+        self.assertEqual(ps[0][2], out["std"])            # the first is the standard
+        self.assertEqual(ps[0][3], out["dust"])
+        self.assertEqual(len({p[0] for p in ps}), len(ps))
+        for pid, _, stars, dust in ps:
+            with self.subTest(preset=pid):
+                self.assertEqual(len(stars), 8)
+                self.assertTrue(all(re.fullmatch(r"#[0-9a-f]{6}", c) for c in stars + [dust]))
+        self.assertEqual(out["found"], [p[0] for p in ps])  # each is recognised as itself, so its chip shows as chosen
+        self.assertEqual(sorted(w for w in out["wells"] if w != "dust"), list(range(8)))   # a well for each colour, and the dust
+
+    # ---- the painters follow a change of form or colour ---------------------------------------------------------------------------
+    def test_painters_rebuild_on_a_new_form_and_new_colours(self):
+        out = self._run(G.GalaxyTransitionTests.GL_SIM + """
+const res = {};
+drawCloudScene(gctx(1440, 800), oc, scene());
+glCalls.length = 0;
+drawCloudScene(gctx(1440, 800), oc, scene({ t: T0 + 1 }));
+res.idle = { tex: calls('texSubImage2D').length, stat: calls('bufferSubData').filter(c => c[3] && c[3].length === N * 4).length };
+// a new form: the cloud is rewritten in place and the counter moves on
+const ring = buildCloud(N, 'ring');
+ring.forEach((p, i) => Object.assign(oc.cloud[i], p)); GALAXY_LOOK.shape++;
+glCalls.length = 0;
+drawCloudScene(gctx(1440, 800), oc, scene());
+const st = calls('bufferSubData').find(c => c[3] && c[3].length === N * 4);
+res.shape = { stat: !!st, codes: st ? Array.from(st[3]).filter((v, i) => i % 4 === 3).every((v, i) => v === oc.cloud[i].ci + 16 * oc.cloud[i].role + (isBrightOrb(i) ? 64 : 0)) : false,
+  lists: oc.shape === GALAXY_LOOK.shape, dust: oc.dustIdx.every(i => oc.cloud[i].role === ROLE_DUST), tex: calls('texSubImage2D').length };
+// new colours: the star, mist and dust sprites go up again and the palette of the small stars follows
+GALAXY_PALETTE[3] = '#00ff00'; DOT_PAL[3] = [0, 255, 0]; GALAXY_LOOK.colour++;
+glCalls.length = 0;
+drawCloudScene(gctx(1440, 800), oc, scene());
+res.colour = { tex: calls('texSubImage2D').length, pal: Array.from(GLX.pal.slice(9, 12)), stat: calls('bufferSubData').filter(c => c[3] && c[3].length === N * 4).length };
+console.log(JSON.stringify(res));
+""", paint=True)
+        self.assertEqual(out["idle"], {"tex": 0, "stat": 0})   # nothing is uploaded again while the look stays
+        self.assertTrue(out["shape"]["stat"])
+        self.assertTrue(out["shape"]["codes"])
+        self.assertTrue(out["shape"]["lists"])
+        self.assertTrue(out["shape"]["dust"])
+        self.assertEqual(out["shape"]["tex"], 0)
+        self.assertEqual(out["colour"]["tex"], 8 + 8 + 1)  # eight star sprites, eight mist sprites, the dust
+        self.assertEqual(out["colour"]["pal"], [0, 1, 0])
+        self.assertEqual(out["colour"]["stat"], 0)
+
+
+class AppearanceWiringTests(unittest.TestCase):
+    def test_the_sheet_is_reachable_and_restored_at_start(self):
+        self.assertIn("class: 'w-opt w-look'", JS)
+        self.assertIn("openLookSheet(menu.querySelector('summary'))", JS)
+        self.assertIn("function openLookSheet(opener)", JS)
+        self.assertIn("applyLook(lookParse(store.get('look')), false);", JS)
+        self.assertIn("store.set('look', lookIsStd(LOOK) ? '' : JSON.stringify(LOOK));", JS)   # the standard look stores nothing
+        self.assertIn("Back to the standard look", JS)
+
+    def test_the_css_hooks_exist(self):
+        for mode in ("dark", "clear", "tinted"):
+            self.assertIn(f'html[data-icons="{mode}"] .app-ico', HTML)
+        self.assertIn("var(--icon-tint, var(--accent))", HTML)
+        self.assertIn("background-color: var(--sky, var(--bg));", HTML)   # the sky of the space views, the theme's background without one
+        self.assertNotIn("--neb-", HTML)                  # the standard --space is the original rgba() one
+
+
+if __name__ == "__main__":
+    unittest.main()
