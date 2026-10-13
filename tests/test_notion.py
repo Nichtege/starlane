@@ -300,5 +300,5 @@ class DashboardTests(NotionCase):
         html = (Path(A.__file__).parent / "web" / "dashboard.html").read_text(encoding="utf-8")
         self.assertIn("if (asks.length) kids.push(notionAsksBox(asks));", html)
         self.assertIn("live ? null : jobTalks(j),", html)                                   # under a finished answer
-        self.assertIn("/^https:\/\/(www\.)?notion\.so\//.test(", html)                  # only Notion's own links
+        self.assertIn(r"/^https:\/\/(www\.)?notion\.so\//.test(", html)                 # only Notion's own links
         self.assertIn("body: JSON.stringify({ decision: approve ? 'approve' : 'deny' })", html)
