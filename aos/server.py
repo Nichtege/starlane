@@ -180,7 +180,7 @@ def make_handler(state: State):
                     self._fail(exc)
                     return
                 csp = (
-                    f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; img-src data:; font-src data:; "
+                    f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; img-src data:; "
                     "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
                 )
                 self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", {"Content-Security-Policy": csp})

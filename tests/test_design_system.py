@@ -10,7 +10,7 @@ HTML = (Path(__file__).resolve().parent.parent / "aos" / "web" / "dashboard.html
 MARK = "Liquid glass: rounded panes that float over deep space."
 MOTION = "@media (prefers-reduced-motion: no-preference) {"
 # the glass block sits last in <style>; its keyframes are the g* ones and the lg* entrances
-OWN_KEYFRAMES = ("lgRise", "lgIn", "lgInR", "gRow", "gStar", "gSweep", "gDue", "gRing")
+OWN_KEYFRAMES = ("lgRise", "lgIn", "lgInR", "gRow", "gDue")
 ENTRANCES = ("lgRise", "lgIn", "lgInR", "side-in-l", "side-in-r")
 
 
@@ -66,15 +66,16 @@ class GlassCssTests(unittest.TestCase):
         m = re.search(r"html:root body :is\(\.btn\.primary, \.os-btn\.solid\) \{([^}]*)\}", css)
         self.assertTrue(m, "primary button rule missing")
         self.assertIn("color: var(--on-accent)", m.group(1))
-        self.assertIn("var(--accent)", m.group(1))
+        self.assertIn("var(--accent-btn)", m.group(1))       # the shade of the tint made for a label (tests/test_ios_design.py)
+        self.assertNotIn("transparent", m.group(1))          # opaque: a coloured label on glass would depend on what is behind it
         # ... also inside a pane, where the flat inset rule would otherwise grey it out
         self.assertRegex(css, r"\.btn\.primary, \.os-btn\.solid, \.chip\[aria-pressed=\"true\"\][^{]*\{[^}]*color: var\(--on-accent\)")
 
     def test_panes_and_controls_share_one_surface_recipe(self):
         css = _glass_css()
-        pane = re.search(r"html:root body :is\(\.card, \.kpi, \.deadline, \.ag-card, \.hero\) \{([^}]*)\}", css)
+        pane = re.search(r"html:root body:not\(\.is-page\) :is\(\.card, \.kpi, \.deadline, \.hero\) \{([^}]*)\}", css)
         self.assertTrue(pane)
-        ctl = re.search(r"html:root body :is\(\.btn, \.icon-btn, \.os-ibtn, \.os-btn, \.hs-atlas, \.chip, \.pill, \.search input, \.os-seg\) \{([^}]*)\}", css)
+        ctl = re.search(r"html:root body :is\(\.btn, \.icon-btn, \.os-ibtn, \.os-btn, \.hs-atlas, \.chip, \.search input\) \{([^}]*)\}", css)
         self.assertTrue(ctl)
         for body in (pane.group(1), ctl.group(1)):
             # the lens is an optional first layer of the backdrop; without it the same line is a plain frost
@@ -82,6 +83,8 @@ class GlassCssTests(unittest.TestCase):
             self.assertIn("saturate(var(--lg-sat))", body)
             self.assertIn("var(--lg-rim)", body)             # the lit edge
             self.assertIn("var(--lg-a", body)                # transparency comes from the token
+            self.assertIn("var(--lg-hair)", body)            # the hairline of the kit
+            self.assertIn("var(--lg-drop)", body)            # ... and its drop shadow
         self.assertIn("border-radius: var(--lg-r)", pane.group(1))
         self.assertIn("border-radius: 999px", ctl.group(1))
 
@@ -126,10 +129,11 @@ class GlassFallbackTests(unittest.TestCase):
         for tok in ("--lg-r:", "--lg-r-m:", "--lg-r-s:", "--lg-gap:", "--lg-blur:", "--lg-sat:", "--lg-a:", "--lg-a-pop:", "--lg-a-ctl:", "--lg-rim:", "--lg-sheen:"):
             self.assertIn(tok, css, tok)
         # dark: explicit theme, system dark, and the OS stage (home, brain, atlas stay dark in every theme)
-        self.assertEqual(HTML.count("--lg-a: 34%; --lg-a-pop: 64%; --lg-a-ctl: 26%;"), 2)   # explicit dark, system dark
+        self.assertEqual(HTML.count("--lg-a: 62%; --lg-a-pop: 80%; --lg-a-ctl: 46%;"), 2)   # explicit dark, system dark (#1a1a1a at 70 to 90 % in the kit)
         # the stage itself (deep space) is more see-through than the dark theme: stars and nebula show through the panes
-        self.assertEqual(HTML.count("--lg-a: 22%; --lg-a-pop: 62%; --lg-a-ctl: 20%;"), 1)
-        self.assertIn("--lg-blur: 11px; --lg-sat: 1.9;", HTML)
+        self.assertEqual(HTML.count("--lg-a: 40%; --lg-a-pop: 72%; --lg-a-ctl: 34%;"), 1)
+        self.assertIn("--lg-blur: 16px; --lg-sat: 1.8;", HTML)           # frost 16 of the kit
+        self.assertIn("--lg-a: 72%; --lg-a-pop: 84%; --lg-a-ctl: 64%;", css)   # light: white at 70 % for a pane
 
     def test_popups_are_denser_and_never_use_the_lens(self):
         # text on a popup must not depend on what happens to be behind it: denser tint token, plain blur, no lens layer

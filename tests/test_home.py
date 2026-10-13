@@ -93,7 +93,8 @@ class HomeStaticTests(unittest.TestCase):
         self.assertNotIn(".w-grip", html)
         self.assertNotIn("body.is-home .card { background: transparent; border: 0;", html)
         self.assertIn("document.body.classList.toggle('is-home', id === 'today')", html)
-        self.assertIn("main.wrap, .notice.wrap { padding-left: var(--gutter); }", html)   # no sidebar any more
+        self.assertIn(".wrap { max-width: 1640px; margin: 0 auto; padding: 0 var(--gutter); }", html)   # no sidebar any more
+        self.assertNotIn(".sidebar", html)
 
     def test_balls_are_matt_grey_on_a_square_grid_with_a_faint_track(self):
         js = _script()
@@ -112,7 +113,7 @@ class HomeStaticTests(unittest.TestCase):
     def test_styles_for_home(self):
         html = _html()
         self.assertRegex(html, r"\.hs \{[^}]*background: var\(--void\)")
-        self.assertIn(".editing .hs-tile > .widget { pointer-events: none; outline: 1.5px dashed", html)
+        self.assertIn(".editing .hs-tile > .widget { pointer-events: none; }", html)   # iOS jiggle mode: no outlines, the tiles wiggle
         self.assertIn("@media (min-width: 1180px) and (min-height: 620px) {", html)
         self.assertIn(".hs-head", html)
 
@@ -230,10 +231,10 @@ console.log(JSON.stringify({
         def ratio(a, b):
             la, lb = sorted([lum(a), lum(b)], reverse=True)
             return (la + 0.05) / (lb + 0.05)
-        for block in (':root[data-theme="dark"] {', ":root {" + chr(10) + "  --bg: #f5f2fb"):
+        for block in (':root[data-theme="dark"] {', ":root {" + chr(10) + "  color-scheme: light;"):
             bg = tok(block, "bg")
-            for name, need in (("ink", 7), ("ink-2", 7), ("muted", 4.5), ("accent", 4.5)):
-                self.assertGreaterEqual(ratio(tok(block, name), bg), need, (block, name))
+            self.assertGreaterEqual(ratio(tok(block, "ink"), bg), 7, block)
+        # the label tones are alpha (composited) and the accent is a tint: tests/test_ios_design.py checks every one of them
         self.assertIn("--void: #060712", css)             # deep space with a blue-violet tint
         self.assertIn('<meta name="color-scheme" content="light dark">', html)
 

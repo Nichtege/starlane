@@ -4,7 +4,8 @@ Safety rules (as for the routines: read-only, whitelist, no shell):
 - Tools only from ALLOWED_TOOLS: read/search the vault (Read, Grep, Glob) and the web (WebSearch, WebFetch). Bash, Write,
   Edit, ... are rejected on load.
 - Vault and web together only with `mixed = true` in agents.toml (a prepared web page could try to carry notes out
-  through a URL). Every shipped agent reads the vault for context; the web ones are `mixed` and get RULES_MIXED.
+  through a URL). Every shipped agent reads the vault for context; the web ones are `mixed` and get RULES_MIXED, and
+  the web guard (webguard.py, a hook) blocks a search query or URL that carries note text.
 - `claude -p` runs without connectors, without a session, with budget, turn and time limits. Agents with vault access
   and skills run in the vault folder; web-only agents and Atlas' own calls run in an empty sandbox folder
   (data/agents/sandbox/).
@@ -198,6 +199,7 @@ class Agent:
     group: str = ""  # field for the Atlas view (e.g. "Health")
     examples: tuple[str, ...] = ()  # example tasks, the dashboard shows them as suggestions
     custom: bool = False  # user-made (dashboard or `aos agent-new`): only these can be changed and deleted
+    user_text: str = ""  # mixed agents, per run: what the user typed; the web guard lets it through
 
     @property
     def web(self) -> bool:
@@ -389,6 +391,16 @@ def find_claude(vault: Path | None = None) -> tuple[str | None, str]:
     return exe, ""
 
 
+GUARD = Path(__file__).with_name("webguard.py")
+
+
+def guard_settings() -> str:
+    """--settings JSON that puts the web guard (webguard.py) around every web call of a mixed agent."""
+    cmd = f'"{Path(sys.executable).as_posix()}" -I "{GUARD.as_posix()}"'  # -I: nothing from the vault folder is imported
+    hook = lambda stage: [{"matcher": "WebFetch|WebSearch", "hooks": [{"type": "command", "command": f"{cmd} {stage}"}]}]  # noqa: E731
+    return json.dumps({"hooks": {"PreToolUse": hook("pre"), "PostToolUse": hook("post")}})
+
+
 def claude_command(exe: str, agent: Agent, system_prompt: str) -> list[str]:
     """The same locks as `aos claude-digest`, plus a turn limit. The task itself goes in via stdin."""
     cmd = [exe, "-p", "--output-format", "json"]  # JSON includes cost and tokens
@@ -410,6 +422,8 @@ def claude_command(exe: str, agent: Agent, system_prompt: str) -> list[str]:
         "--append-system-prompt", system_prompt,
         "--tools", ",".join(agent.tools),  # empty = no tools at all (Atlas' plan and review calls)
     ]
+    if agent.vault and agent.web:
+        cmd += ["--settings", guard_settings()]  # flag settings apply despite --setting-sources (tested)
     if allowed:
         # Only this one rule, and it must come last. Grep and Glob are deliberately NOT listed on their own: a bare "Grep"
         # allows searching the whole file system (tested); with Read(./**) they only apply in the vault (and the skill folder).
@@ -478,12 +492,32 @@ def workdir(cfg: Config, agent: Agent) -> Path:
 
 
 def _run(cfg: Config, agent: Agent, system: str, instruction: str) -> tuple[str, str, str, dict]:
+    if not (agent.vault and agent.web):
+        return _spawn(cfg, agent, system, instruction, None)
+    box = Path(cfg.jobs_log).parent / "guard"  # the web guard's files for this run: note index, seen URLs, blocks
+    box.mkdir(parents=True, exist_ok=True)
+    state = box / secrets.token_hex(6)
+    env = {**os.environ, "AOS_GUARD_VAULT": str(cfg.vault), "AOS_GUARD_IGNORE": json.dumps(list(cfg.ignore)),
+           "AOS_GUARD_STATE": str(state), "AOS_GUARD_ALLOW": agent.user_text}
+    try:
+        status, answer, note, meta = _spawn(cfg, agent, system, instruction, env)
+        try:
+            blocked = len(state.with_name(state.name + ".blocked").read_text(encoding="utf-8").split())
+        except OSError:
+            blocked = 0
+        return status, answer, note, ({**meta, "guard_blocked": blocked} if blocked else meta)
+    finally:
+        for f in box.glob(state.name + ".*"):
+            f.unlink(missing_ok=True)
+
+
+def _spawn(cfg: Config, agent: Agent, system: str, instruction: str, env: dict | None) -> tuple[str, str, str, dict]:
     exe, why = find_claude(cfg.vault)
     if not exe:
         return "failed", "", why, {}
     try:
         proc = subprocess.Popen(
-            claude_command(exe, agent, system), cwd=workdir(cfg, agent), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            claude_command(exe, agent, system), cwd=workdir(cfg, agent), env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace",
             creationflags=NO_WINDOW | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0),  # own group: Ctrl+C events do not reach the server
             start_new_session=_own_session(),  # macOS / Linux: what lets _kill_tree end the whole tree (not inside a routine's own group)
@@ -552,6 +586,9 @@ def _finish(cfg: Config, agent: Agent, job: dict, runner, prefix: str = "") -> d
     t0 = time.monotonic()
     meta: dict = {}
     try:
+        if agent.vault and agent.web:  # the user's own words pass the web guard: theirs directly, or Atlas' question
+            asked = (get_job(cfg, job["parent"]) or {}).get("instruction", "") if job.get("parent") else job["instruction"]
+            agent = replace(agent, user_text=asked)
         res = runner(cfg, agent, prefix + job["instruction"])
         status, result, note = res[:3]  # test runners return 3 values, execute() adds meta
         if len(res) > 3 and isinstance(res[3], dict):
@@ -568,7 +605,7 @@ def _finish(cfg: Config, agent: Agent, job: dict, runner, prefix: str = "") -> d
         result = result[:MAX_RESULT] + "\n\n" + tr("[… truncated]")
     done = {**job, "status": status, "finished": datetime.now().isoformat(timespec="seconds"),
             "duration_s": round(time.monotonic() - t0, 1), "result": result, "note": redact(note or "")[-NOTE_LIMIT:]}
-    done.update({k: v for k, v in meta.items() if k in ("cost_usd", "tokens_in", "tokens_out", "model_used", "turns", "routed", "plan", "why")})
+    done.update({k: v for k, v in meta.items() if k in ("cost_usd", "tokens_in", "tokens_out", "model_used", "turns", "routed", "plan", "why", "guard_blocked")})
     with _LOCK:
         _append(cfg, done)
         _record_spend(cfg, done)

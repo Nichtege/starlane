@@ -75,6 +75,35 @@ class LensModelTests(unittest.TestCase):
         self.assertLess(out["diagR"], 128)
         self.assertLess(out["diagG"], 128)
 
+    def test_bmp_url_holds_exactly_the_map(self):
+        # Decoded by hand: the header a browser reads, then every pixel against lgLensMap (rows top-down, BGR, padded to 4 bytes)
+        out = self._run("""
+          const res = [];
+          for (const [w, h, r] of [[120, 60, 18], [37, 23, 9], [1, 1, 0]]) {
+            const m = lgLensMap(w, h, r, lgBezel(w, h)), url = lgBmpUrl(w, h, m), pre = 'data:image/bmp;base64,';
+            const buf = Buffer.from(url.slice(pre.length), 'base64'), row = (w * 3 + 3) & ~3;
+            let bad = 0;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+              const i = (y * w + x) * 4, o = 54 + y * row + x * 3;
+              if (buf[o] !== m[i + 2] || buf[o + 1] !== m[i + 1] || buf[o + 2] !== m[i]) bad++;
+            }
+            res.push({ prefix: url.startsWith(pre), magic: buf.toString('latin1', 0, 2), size: buf.readUInt32LE(2), len: buf.length,
+              offset: buf.readUInt32LE(10), header: buf.readUInt32LE(14), w: buf.readInt32LE(18), h: buf.readInt32LE(22),
+              planes: buf.readUInt16LE(26), bits: buf.readUInt16LE(28), compression: buf.readUInt32LE(30), image: buf.readUInt32LE(34),
+              expect: 54 + row * h, bad, want: [w, h] });
+          }
+          console.log(JSON.stringify(res));
+        """)
+        for o in out:
+            w, h = o["want"]
+            self.assertTrue(o["prefix"])
+            self.assertEqual((o["magic"], o["offset"], o["header"], o["planes"], o["bits"], o["compression"]), ("BM", 54, 40, 1, 24, 0))
+            self.assertEqual((o["w"], o["h"]), (w, -h))                       # negative height: the rows run top-down
+            self.assertEqual(o["size"], o["expect"])
+            self.assertEqual(o["len"], o["expect"])
+            self.assertEqual(o["image"], o["expect"] - 54)
+            self.assertEqual(o["bad"], 0)
+
     def test_map_is_mirror_symmetric(self):
         out = self._run("""
           const w = 90, h = 50, r = 14, b = lgBezel(w, h), m = lgLensMap(w, h, r, b);
@@ -264,8 +293,10 @@ class EngineContractTests(unittest.TestCase):
     def test_filter_primitives_are_the_supported_set(self):
         for prim in ("feImage", "feDisplacementMap", "feColorMatrix", "feBlend"):
             self.assertIn(prim, ENGINE)
-        # the map is a data: URL (the page CSP allows img-src data:, never a network source)
-        self.assertIn("toDataURL('image/png')", ENGINE)
+        # the map is a data: URL (the page CSP allows img-src data:, never a network source), written as a BMP without a canvas
+        self.assertIn("url = lgBmpUrl(w, h, lgLensMap(w, h, r, b))", ENGINE)
+        self.assertIn("'data:image/bmp;base64,'", MODEL)
+        self.assertNotIn("toDataURL", ENGINE + MODEL)
         self.assertNotIn("http://", ENGINE.replace("http://www.w3.org", ""))
 
 

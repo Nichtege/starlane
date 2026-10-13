@@ -22,8 +22,9 @@ and read-only?".
 See [docs/architecture.md](docs/architecture.md) for the module map and how a run flows. The dashboard is one
 self-contained file, `aos/web/dashboard.html` (vanilla JS, no build step); `tests/test_*` check it with string
 matches and small `node` harnesses, so a node install is needed to run those.
-The look (rounded floating glass, the lens, its budget and fallbacks) is described in [docs/design.md](docs/design.md); a change
-to it is checked in light and dark, on Home, Atlas, Second brain and a page tab, at phone width, in all three glass steps.
+The look (the iOS 27 language: system colours, tints, controls; rounded floating glass, the lens, its budget and fallbacks) is
+described in [docs/design.md](docs/design.md); a change to it is checked in light and dark, on Home, Atlas, Second brain and a
+page tab, at phone width, in all three glass steps and with a tint besides blue.
 
 ## Pull requests
 

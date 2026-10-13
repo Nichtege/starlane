@@ -66,7 +66,7 @@ const store = {{ get: k => (k in STORE ? STORE[k] : null), set: (k, v) => {{ STO
           console.log(JSON.stringify({ blur: [0, 60, 100].map(v => glassTokens(v).blur), d1: glassGl(60, 1).lod, d2: glassGl(60, 2).lod,
             clear: glassGl(100, 1).lod, matte: glassGl(0, 1).lod }));
         """)
-        self.assertEqual(out["blur"], [0, 11, 5])
+        self.assertEqual(out["blur"], [0, 16, 6])
         self.assertAlmostEqual(out["d2"] - out["d1"], 1.0, places=2)   # twice the pixels, one more mip level for the same blur
         self.assertLess(out["clear"], out["d1"])                      # liquid is clearer than the default
         self.assertEqual(out["matte"], 0)

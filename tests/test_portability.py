@@ -135,7 +135,7 @@ class ProcessGroups(TempVaultCase):
         def runner(cfg, agent, instruction):
             raise KeyboardInterrupt
         with self.assertRaises(KeyboardInterrupt):
-            A._finish(self.cfg, mock.MagicMock(), job, runner)
+            A._finish(self.cfg, mock.MagicMock(vault=False), job, runner)  # not mixed: no web guard setup
         rec = next(j for j in A.all_jobs(self.cfg) if j["id"] == "j-ctrl-c")
         self.assertEqual(rec["status"], "failed")        # not "running": the agent would count as busy for the next 16 minutes
         self.assertIn("Ctrl+C", rec["note"])

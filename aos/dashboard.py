@@ -42,7 +42,6 @@ The page text itself is not part of the data: render_html embeds the "web" secti
 
 from __future__ import annotations
 
-import base64
 import html as _html
 import json
 import re
@@ -157,27 +156,7 @@ def render_html(data: dict, template: Path = TEMPLATE, lang: str | None = None) 
     html = html.replace('<html lang="en">', f'<html lang="{cat["lang"]}">', 1)
     html = html.replace(I18N_MARKER, _json_for_html(cat), 1)
     html = html.replace(marker, _json_for_html(data), 1)
-    return html.replace(FONT_MARKER, _font_css(template.parent / "fonts"), 1)
-
-
-FONT_MARKER = "/*__AOS_FONTS__*/"
-FONT_FACES = (("Geist", "geist.woff2"), ("Geist Mono", "geist-mono.woff2"))
-
-
-def _font_css(folder: Path) -> str:
-    """Embed the fonts as data: URIs: the dashboard stays one file and needs no network."""
-    out = []
-    for family, name in FONT_FACES:
-        try:
-            raw = (folder / name).read_bytes()
-        except OSError:
-            continue  # without the font the CSS falls back to the system font
-        b64 = base64.b64encode(raw).decode("ascii")
-        out.append(
-            f'@font-face{{font-family:"{family}";font-weight:100 900;font-style:normal;font-display:swap;'
-            f'src:url(data:font/woff2;base64,{b64}) format("woff2")}}'
-        )
-    return "".join(out)
+    return html
 
 
 def write_dashboard(cfg: Config, now: datetime | None = None) -> dict:

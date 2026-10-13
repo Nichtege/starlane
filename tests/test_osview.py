@@ -73,8 +73,9 @@ class OsViewStaticTests(unittest.TestCase):
         self.assertRegex(tpl, r"body\.is-brain \.os-stage \{ background: radial-gradient\(")   # haze via CSS, no base color
         # menu, legend, preview and hover card are floating glass panes now (see "Liquid glass"), not boxes of the old chrome
         self.assertRegex(tpl, r"html:root body\.is-brain \.os-controls \{[^}]*right: var\(--lg-gap\)")
-        self.assertRegex(tpl, r"html:root body :is\(\.detail, \.results, \.w-pop, \.hs-card, \.os-card, \.os-preview, \.os-controls, \.os-legendbox[^)]*\) \{[^}]*border-radius: var\(--lg-r-m\)")
-        self.assertIn("html:root body.is-brain .os-legendbox {", tpl)
+        self.assertRegex(tpl, r"html:root body :is\(\.detail, \.results, \.w-pop, \.hs-card, \.os-card, \.os-preview, \.os-controls, \.os-legendbox[^)]*\) \{[^}]*var\(--lg-a-pop\)")
+        self.assertIn("html:root body :is(.os-preview, .os-controls) { border-radius: var(--lg-r); }", tpl)
+        self.assertIn("html:root body :is(.os-card, .os-legendbox, .note) { border-radius: var(--lg-r-m); }", tpl)
         js = _script()
         self.assertNotIn("background(ctx, w, hh)", js)       # no fullscreen blit per frame
         self.assertNotIn("v.bg", js)
