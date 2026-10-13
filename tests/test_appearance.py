@@ -16,7 +16,10 @@ import test_galaxy_transitions as G   # a module import: the class imported by n
 from test_galaxy_transitions import FIXTURE, HTML, JS, MODEL, PAINT, PRELUDE
 
 LOOK = JS[JS.index("// ---- The look:"): JS.index("// ---- end of the look model")]
-FORMS = ["spiral", "swirl", "ring", "elliptical", "sombrero", "antennae", "irregular", "cloud", "blackhole", "supernova", "planet", "helix"]
+# the painter of the backdrop (it draws on whatever 2D context it is given)
+BACKDROP = JS[JS.index("const BACKDROP_TINTS"): JS.index("// A preview of a backdrop for the sheet")]
+FORMS = ["spiral", "swirl", "whirlpool", "ring", "cartwheel", "elliptical", "sombrero", "antennae", "irregular", "cluster",
+         "cloud", "hourglass", "supernova", "blackhole", "quasar", "comet", "planet", "solar", "atom", "helix", "wormhole"]
 # buildCloud(GALAXY_N) as it was before the other forms existed (every field to 9 decimals, sha256): the standard galaxy is untouched
 SPIRAL_SHA = "f31c1631fe31c2ff8045896cc9addbb7b9f989c360868ecfcce5c2f88f7c5ad1"
 
@@ -191,6 +194,64 @@ console.log(JSON.stringify({ presets: LOOK_PRESETS.map(p => [p[0], p[1], p[2], p
         self.assertEqual(out["found"], [p[0] for p in ps])  # each is recognised as itself, so its chip shows as chosen
         self.assertEqual(sorted(w for w in out["wells"] if w != "dust"), list(range(8)))   # a well for each colour, and the dust
 
+    # ---- the backdrop -----------------------------------------------------------------------------------------------------------
+    def test_the_backdrop_is_a_choice_of_the_look_and_writes_no_css(self):
+        out = self._run("""
+const L = o => Object.assign(lookNorm(null), o);
+console.log(JSON.stringify({ std: LOOK_STD.backdrop, kinds: LOOK_BACKDROPS, names: Object.keys(LOOK_BACKDROP_NAMES),
+  norm: ['deep', 'blob', 7, null, '</style>'].map(b => lookNorm({ backdrop: b }).backdrop), parsed: lookParse('{"backdrop":"milkyway"}').backdrop,
+  css: LOOK_BACKDROPS.map(b => lookCss(L({ backdrop: b }))),
+  part: [lookIsStd(L({ backdrop: 'deep' }), 'backdrop'), lookIsStd(L({ backdrop: 'deep' }), 'scenery'), lookIsStd(L({ backdrop: 'deep' }))],
+  groups: LOOK_FORM_GROUPS, forms: GALAXY_FORMS, unnamed: GALAXY_FORMS.filter(f => !LOOK_FORM_NAMES[f]) }));
+""")
+        self.assertEqual(out["std"], "quiet")
+        self.assertEqual(out["kinds"][0], "quiet")        # the first choice in the sheet is the standard
+        self.assertEqual(out["names"], out["kinds"])
+        self.assertEqual(out["norm"], ["deep", "quiet", "quiet", "quiet", "quiet"])
+        self.assertEqual(out["parsed"], "milkyway")
+        self.assertEqual(set(out["css"]), {""})           # a backdrop is painted, never written into the page's CSS
+        self.assertEqual(out["part"], [False, True, False])
+        self.assertEqual(out["unnamed"], [])
+        # the sheet's headings: the galaxies from the first form, the rest after the last galaxy
+        firsts = [out["forms"].index(g[1]) for g in out["groups"]]
+        self.assertEqual(firsts[0], 0)
+        self.assertEqual(firsts, sorted(firsts))
+        self.assertEqual([g[0] for g in out["groups"]], ["Galaxies", "Beyond"])
+
+    def test_every_backdrop_paints_its_sky_once_and_cheaply(self):
+        out = self._run(BACKDROP + """
+// a 2D context that counts what is drawn and checks every alpha
+const fake = () => {
+  const c = { ops: 0, bad: 0, save() {}, restore() {}, translate() {}, rotate() {}, scale() {}, setTransform() {}, beginPath() {}, moveTo() {}, lineTo() {}, arc() {},
+    fill() { this.ops++; }, stroke() { this.ops++; }, fillRect() { this.ops++; },
+    createRadialGradient: () => ({ addColorStop(o, col) { if (!/^#[0-9a-f]{6}([0-9a-f]{2})?$/.test(col)) c.bad++; } }),
+    createLinearGradient: () => ({ addColorStop(o, col) { if (!/^#[0-9a-f]{6}([0-9a-f]{2})?$/.test(col)) c.bad++; } }), globalCompositeOperation: 'source-over' };
+  let a = 1;
+  Object.defineProperty(c, 'globalAlpha', { get: () => a, set: v => { if (!(v >= 0 && v <= 1)) c.bad++; a = v; } });
+  return c;
+};
+const glow = LOOK_STD.glow, res = {};
+for (const kind of LOOK_BACKDROPS) {
+  const a = fake(), b = fake(), t = fake(), t0 = Date.now();
+  paintBackdrop(a, 1920, 1080, kind, 1, glow);
+  const ms = Date.now() - t0;
+  paintBackdrop(b, 1920, 1080, kind, 1, glow);
+  paintBackdrop(t, 100, 66, kind, 0.4, glow);
+  res[kind] = { ops: a.ops, same: a.ops === b.ops, thumb: t.ops, bad: a.bad + t.bad, end: [a.globalCompositeOperation, a.globalAlpha], ms };
+}
+console.log(JSON.stringify(res));
+""")
+        for kind, o in out.items():
+            with self.subTest(kind=kind):
+                self.assertEqual(o["bad"], 0)             # every colour a #rrggbb(aa), every alpha in 0..1
+                self.assertTrue(o["same"])                # seeded: the same sky every time
+                self.assertEqual(o["end"], ["source-over", 1])
+                self.assertGreater(o["thumb"], 4 if kind == "quiet" else 15)   # the preview shows something (the quiet one a few stars)
+                if kind != "quiet":
+                    self.assertGreater(o["ops"], 1000)    # a full sky on a 1920 x 1080 window ...
+                    self.assertLess(o["ops"], 20000)      # ... in one paint of bounded cost
+        self.assertEqual(out["meteors"]["ops"], out["stars"]["ops"])   # on the page the shooting stars are elements, over the starfield
+
     # ---- the painters follow a change of form or colour ---------------------------------------------------------------------------
     def test_painters_rebuild_on_a_new_form_and_new_colours(self):
         out = self._run(G.GalaxyTransitionTests.GL_SIM + """
@@ -243,6 +304,20 @@ class AppearanceWiringTests(unittest.TestCase):
         self.assertIn("var(--icon-tint, var(--accent))", HTML)
         self.assertIn("background-color: var(--sky, var(--bg));", HTML)   # the sky of the space views, the theme's background without one
         self.assertNotIn("--neb-", HTML)                  # the standard --space is the original rgba() one
+
+    def test_the_backdrop_is_wired(self):
+        self.assertIn("head('Backdrop', 'backdrop'), backs", JS)
+        self.assertIn("set({ backdrop: id }, true)", JS)
+        self.assertIn("if (LOOK.backdrop !== prev.backdrop) syncBackdrop();", JS)
+        # shown in the space views only, never on the light pages
+        self.assertIn(".bg-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }", HTML)
+        self.assertIn("body:is(.is-home, .is-brain, .is-atlas) .bg-sky { display: block; }", HTML)
+        # the shooting stars move only for those who allow motion, and the aurora's 10 Hz timer leaves them alone
+        self.assertIn("@media (prefers-reduced-motion: no-preference) {\n  .bg-meteor { animation: meteor ", HTML)
+        self.assertIn("if (!bg || RM.matches || document.hidden", JS)
+        self.assertIn("if (e.target.tagName !== 'I') return;", JS)
+        # the sheet's radio groups step over their headings
+        self.assertIn("g.querySelectorAll('[role=\"radio\"]')", JS)
 
 
 if __name__ == "__main__":
