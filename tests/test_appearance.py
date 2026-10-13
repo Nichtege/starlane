@@ -16,7 +16,7 @@ import test_galaxy_transitions as G   # a module import: the class imported by n
 from test_galaxy_transitions import FIXTURE, HTML, JS, MODEL, PAINT, PRELUDE
 
 LOOK = JS[JS.index("// ---- The look:"): JS.index("// ---- end of the look model")]
-FORMS = ["spiral", "cloud", "ring", "elliptical", "swirl"]
+FORMS = ["spiral", "swirl", "ring", "elliptical", "sombrero", "antennae", "irregular", "cloud", "blackhole", "supernova", "planet", "helix"]
 # buildCloud(GALAXY_N) as it was before the other forms existed (every field to 9 decimals, sha256): the standard galaxy is untouched
 SPIRAL_SHA = "f31c1631fe31c2ff8045896cc9addbb7b9f989c360868ecfcce5c2f88f7c5ad1"
 
@@ -57,7 +57,7 @@ for (const form of GALAXY_FORMS) {
   res[form] = { n: a.length, same: JSON.stringify(a) === JSON.stringify(b),
     roles: a.every((p, i) => p.role === galaxyRole(i)),
     inside: a.every(p => Math.hypot(p.x, p.y, p.z) <= 0.9901 && Math.abs(p.r - Math.hypot(p.x, p.y, p.z)) < 1e-9),
-    fields: a.every(p => Number.isInteger(p.ci) && p.ci >= 0 && p.ci < 8 && p.br > 0 && p.br <= 1 && p.sz > 0 && isFinite(p.sp) && p.sp > 0 && isFinite(p.ph)),
+    fields: a.every(p => Number.isInteger(p.ci) && p.ci >= 0 && p.ci < 8 && p.br > 0 && p.br <= 1 && p.sz > 0 && isFinite(p.sp) && Math.abs(p.sp) <= 0.6 && isFinite(p.ph)),
     bright: a.filter((p, i) => isBrightOrb(i)).every(p => p.r >= 0.4 - 1e-9 && p.arm >= 0),
     agents: new Set(picks).size, agentsOk: picks.every(i => i < GALAXY_POOL && a[i].arm >= 0), colours: ci.size,
     flat: a.slice(0, GALAXY_STARS).reduce((t, p) => t + Math.abs(p.y), 0) / GALAXY_STARS };
@@ -79,7 +79,27 @@ console.log(JSON.stringify(res));
         # they really are different shapes: the ring and the swirl are flat discs, the cloud and the elliptical are thick
         self.assertLess(out["ring"]["flat"], out["cloud"]["flat"])
         self.assertLess(out["swirl"]["flat"], out["elliptical"]["flat"])
-        self.assertEqual(len({round(out[f]["flat"], 4) for f in FORMS}), 5)
+        self.assertEqual(len({round(out[f]["flat"], 4) for f in FORMS}), len(FORMS))
+
+    def test_the_black_hole_keeps_its_shadow_and_faces_the_viewer(self):
+        out = self._run("""
+const a = buildCloud(GALAXY_N, 'blackhole'), o = [0, 0, 0], q = [0, 0, 0];
+// as the home page shows it at two moments 10 s apart (the inner edge of the disc goes round in about forty seconds): positions on the screen in units of the radius
+const screen = t => { const rot = homeRot(t); return a.map(p => { orbPoint(p, t, o); rotInto(rot, o[0], o[1], o[2], q); return [q[0], q[1]]; }); };
+const s1 = screen(T0), s2 = screen(T0 + 10), d = (s, i) => Math.hypot(s[i][0], s[i][1]);
+const inShadow = s => a.filter((p, i) => p.role !== ROLE_DUST && d(s, i) < 0.14).length;
+const ring = a.map((p, i) => i).filter(i => a[i].role === ROLE_STAR && a[i].sp === -HOME_SPIN && Math.abs(d(s1, i) - 0.2) < 0.02);
+const moved = Math.max(...ring.map(i => Math.hypot(s1[i][0] - s2[i][0], s1[i][1] - s2[i][1])));
+const disc = a.map((p, i) => i).filter(i => a[i].role === ROLE_STAR && a[i].sp > 0 && a[i].r < 0.5);
+const discMoved = disc.filter(i => Math.hypot(s1[i][0] - s2[i][0], s1[i][1] - s2[i][1]) > 0.1).length / disc.length;
+console.log(JSON.stringify({ shadow: [inShadow(s1), inShadow(s2)], dark: a.filter((p, i) => p.role === ROLE_DUST && d(s1, i) < 0.12).length,
+  ring: ring.length, moved, discMoved }));
+""")
+        self.assertEqual(out["shadow"], [0, 0])           # nothing bright in front of the shadow, whenever you look
+        self.assertGreater(out["dark"], 500)              # and it is filled with dust, so it is darker than the space round it
+        self.assertGreater(out["ring"], 500)              # the photon ring ...
+        self.assertLess(out["moved"], 0.05)               # ... stays where it is (only the small wobble of every particle) ...
+        self.assertGreater(out["discMoved"], 0.9)         # ... while the inner disc turns
 
     # ---- the look model ----------------------------------------------------------------------------------------------------------
     def test_the_standard_look_changes_nothing(self):
@@ -209,6 +229,9 @@ class AppearanceWiringTests(unittest.TestCase):
     def test_the_sheet_is_reachable_and_restored_at_start(self):
         self.assertIn("class: 'w-opt w-look'", JS)
         self.assertIn("openLookSheet(menu.querySelector('summary'))", JS)
+        # and from the pen: while arranging, the bar has Appearance next to Reset layout (as Customize in the edit mode of iOS)
+        self.assertRegex(JS, r"view\.editing \? h\('button', \{[^}]*'data-fk': 'bar:look'[^}]*onclick: e => openLookSheet\(e\.currentTarget\)")
+        self.assertLess(JS.index("'data-fk': 'bar:look'"), JS.index("'data-fk': 'bar:reset'"))
         self.assertIn("function openLookSheet(opener)", JS)
         self.assertIn("applyLook(lookParse(store.get('look')), false);", JS)
         self.assertIn("store.set('look', lookIsStd(LOOK) ? '' : JSON.stringify(LOOK));", JS)   # the standard look stores nothing
