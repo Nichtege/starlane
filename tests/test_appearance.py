@@ -12,8 +12,8 @@ import subprocess
 import tempfile
 import unittest
 
-import test_galaxy_transitions as G   # a module import: the class imported by name would run its tests a second time here
-from test_galaxy_transitions import FIXTURE, HTML, JS, MODEL, PAINT, PRELUDE
+from tests import test_galaxy_transitions as G   # a module import: the class imported by name would run its tests a second time here
+from tests.test_galaxy_transitions import FIXTURE, HTML, JS, MODEL, PAINT, PRELUDE
 
 LOOK = JS[JS.index("// ---- The look:"): JS.index("// ---- end of the look model")]
 # the painter of the backdrop (it draws on whatever 2D context it is given)
