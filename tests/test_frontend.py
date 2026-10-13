@@ -2,7 +2,7 @@ import re
 import unittest
 from pathlib import Path
 
-from aos.dashboard import FONT_MARKER, render_html
+from aos.dashboard import render_html
 from aos.server import make_handler  # noqa: F401  (CSP lives in server.py)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -18,14 +18,14 @@ def _script(tpl: str) -> str:
 
 
 class FrontendTests(unittest.TestCase):
-    def test_fonts_are_inlined(self):
+    def test_system_fonts_only(self):
+        # the system font of each platform (SF Pro on Apple devices), nothing downloaded or embedded, so the CSP needs no font-src
         html = render_html({"nodes": []})
-        self.assertIn("font/woff2;base64,", html)
-        self.assertNotIn(FONT_MARKER, html)
-
-    def test_csp_allows_data_fonts(self):
-        src = (ROOT / "aos" / "server.py").read_text(encoding="utf-8")
-        self.assertIn("font-src data:", src)
+        self.assertNotIn("@font-face", html)
+        self.assertNotIn("woff2", html)
+        self.assertFalse((ROOT / "aos" / "web" / "fonts").exists())
+        self.assertNotIn("font-src", (ROOT / "aos" / "server.py").read_text(encoding="utf-8"))
+        self.assertRegex(_tpl(), r"--font: system-ui, -apple-system, BlinkMacSystemFont,")
 
     def test_template_has_no_external_urls(self):
         tpl = _tpl()
@@ -35,7 +35,7 @@ class FrontendTests(unittest.TestCase):
     def test_placeholders_present_exactly_once(self):
         tpl = _tpl()
         self.assertEqual(tpl.count("__AOS_DATA__"), 1)
-        self.assertEqual(tpl.count("/*__AOS_FONTS__*/"), 1)
+        self.assertNotIn("__AOS_FONTS__", tpl)
 
     def test_new_views_are_wired(self):
         js = _script(_tpl())

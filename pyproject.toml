@@ -24,4 +24,4 @@ include-package-data = false   # what ships is listed here and in setup.py (aos/
 version = { attr = "aos.__version__" }
 
 [tool.setuptools.package-data]
-aos = ["web/*.html", "web/fonts/*"]
+aos = ["web/*.html"]
