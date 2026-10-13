@@ -8,4 +8,4 @@ if sys.version_info < (3, 11):  # before anything imports tomllib: say what to d
         "Install a newer Python and start it by its own name, for example: python3.12 -m aos"
     )
 
-__version__ = "1.1.1"
+__version__ = "1.2.0"
