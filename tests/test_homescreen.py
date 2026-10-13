@@ -383,7 +383,7 @@ const at = v => glassTokens(v), keys = Object.keys(GLASS_STOPS);
 const sweep = Array.from({ length: 101 }, (_, v) => at(v));
 const mono = (k, dir) => sweep.every((t, i) => i === 0 || (dir > 0 ? t[k] >= sweep[i - 1][k] - 1e-9 : t[k] <= sweep[i - 1][k] + 1e-9));
 console.log(JSON.stringify({ keys, matte: at(0), def: at(60), liquid: at(100), d: GLASS_DEFAULT, m: GLASS_MATTE, near: at(GLASS_MATTE),
-  mono: { a: mono('a', -1), sat: mono('sat', 1), rim: mono('rim', 1), sheen: mono('sheen', 1), shade: mono('shade', 1) },
+  mono: { a: mono('a', -1), sat: mono('sat', 1), rim: mono('rim', 1), sheen: mono('sheen', 1), shade: mono('shade', 1), refr: mono('refr', 1), disp: mono('disp', 1) },
   blurUp: sweep.slice(0, 61).every((t, i, a) => i === 0 || t.blur >= a[i - 1].blur - 1e-9),
   blurDown: sweep.slice(60).every((t, i, a) => i === 0 || t.blur <= a[i - 1].blur + 1e-9),
   clamp: [at(-5), at(250), at('37'), at(37.6)], t37: at(37), t38: at(38),
@@ -391,12 +391,13 @@ console.log(JSON.stringify({ keys, matte: at(0), def: at(60), liquid: at(100), d
   ints: [glassClamp(12.4), glassClamp(12.5), glassClamp('7'), glassClamp(101), glassClamp(-1), glassClamp(undefined)],
   text: [glassText(0), glassText(100), glassText(42), glassText(-3), glassText(7)] }));
 """)
-        self.assertEqual(out["keys"], ["a", "blur", "sat", "rim", "sheen", "shade"])
+        self.assertEqual(out["keys"], ["a", "blur", "sat", "rim", "sheen", "shade", "refr", "disp"])
         self.assertEqual(out["d"], 60)
-        self.assertEqual(out["def"], {"a": 22, "blur": 11, "sat": 1.9, "rim": 0.5, "sheen": 0.13, "shade": 0})   # the look before it could be chosen
-        self.assertEqual(out["matte"], {"a": 96, "blur": 0, "sat": 1, "rim": 0.18, "sheen": 0.03, "shade": 0})   # nearly opaque, no blur
-        self.assertEqual(out["liquid"], {"a": 3, "blur": 5, "sat": 2.4, "rim": 0.9, "sheen": 0.24, "shade": 0.55})   # almost clear, a lit rim
-        for k in ("a", "sat", "rim", "sheen", "shade"):
+        # the default is the regular glass of Apple's iOS 27 kit: frost 16, saturation 1.8, refraction .7, dispersion .2
+        self.assertEqual(out["def"], {"a": 40, "blur": 16, "sat": 1.8, "rim": 0.3, "sheen": 0.06, "shade": 0, "refr": 0.7, "disp": 0.2})
+        self.assertEqual(out["matte"], {"a": 96, "blur": 0, "sat": 1, "rim": 0.12, "sheen": 0.02, "shade": 0, "refr": 0.3, "disp": 0.05})   # nearly opaque, no blur
+        self.assertEqual(out["liquid"], {"a": 6, "blur": 6, "sat": 2.4, "rim": 0.6, "sheen": 0.16, "shade": 0.55, "refr": 1, "disp": 1})   # almost clear, a lit rim
+        for k in ("a", "sat", "rim", "sheen", "shade", "refr", "disp"):
             self.assertTrue(out["mono"][k], k)                   # one direction from matte to liquid
         self.assertTrue(out["blurUp"] and out["blurDown"])       # the blur peaks at the old look: sharp glass is clearer than frosted
         self.assertGreaterEqual(out["near"]["a"], 90)            # the matte step is still a solid pane
@@ -512,7 +513,7 @@ class HomescreenContractTests(unittest.TestCase):
         for needle in ("@keyframes hsJelly", "@keyframes hsPopIn", "@keyframes hsJiggle", "@keyframes hsDrop",
                        ".hs-tile { transition: translate .62s var(--lg-spring)", ".hs-tile.hs-jelly { animation: hsJelly",
                        ".hs-tile.hs-new { animation: hsPopIn", ".editing .hs-tile:not(.hs-drag)", "animation: hsJiggle",
-                       ".hs-dot { transition: width"):
+                       ".hs-dot { transition: background"):
             self.assertIn(needle, motion, needle)
             self.assertEqual(css.count(needle), 1, needle)   # and nowhere else: with reduced motion the tiles simply jump
         outside = css.replace(motion, "")
@@ -552,7 +553,7 @@ class HomescreenContractTests(unittest.TestCase):
         self.assertIn("ind.style.translate = b.offsetLeft + 'px 0';", SCRIPT)
         self.assertIn("ind.style.translate = '0 ' + b.offsetTop + 'px';", SCRIPT)
         self.assertIn("ind.animate([{ scale: '1 1' }", SCRIPT)
-        self.assertEqual(len(re.findall(r"\.tab-ind \{[^}]*transition: translate \.45s", HTML)), 3)
+        self.assertEqual(len(re.findall(r"\.tab-ind \{[^}]*transition: translate \.45s", HTML)), 1)
         self.assertNotRegex(HTML, r"\.tab-ind \{[^}]*transition: transform")
 
     def test_the_skills_matrix_is_brought_into_view_inside_its_tile(self):
@@ -584,7 +585,7 @@ class HomescreenContractTests(unittest.TestCase):
         self.assertIn("fitPlan(blocks, st => { show(st); return body.scrollHeight > body.clientHeight + 1; })", FIT_SRC)
         # what the engine switches off, and its "+N more" line
         self.assertIn(".fit-off { display: none !important; }", HTML)
-        self.assertRegex(HTML, r"\.fit-more \{[^}]*font: 600 11px var\(--mono\)")
+        self.assertRegex(HTML, r"\.fit-more \{[^}]*font: 600 12px var\(--font\)")
 
     def test_container_units_only_where_the_tile_is_the_container(self):
         css = HTML[: HTML.index("</style>")]
@@ -635,7 +636,17 @@ class HomescreenContractTests(unittest.TestCase):
         rule = re.search(r"body\.is-home \.search input \{([^}]*)\}", HTML).group(1)
         self.assertIn("padding: 0;", rule)
         self.assertNotIn("padding-left", rule)
-        self.assertIn("body.is-home .search:focus-within input { padding: 0 8px 0 34px; }", HTML)
+        self.assertIn("body.is-home .search:focus-within input { padding: 0 8px 0 var(--corner); }", HTML)
+
+    def test_the_corner_buttons_are_equal_circles(self):
+        # Search, Refresh, Glass and Theme were 34, 40, 44 and 37 px wide pills: one size, a circle, 44 px under a finger.
+        self.assertIn("body.is-home { --corner: 40px; }", HTML)
+        self.assertIn("@media (pointer: coarse) { body.is-home { --corner: 44px; } }", HTML)
+        btn = re.search(r"body\.is-home header\.top \.btn \{([^}]*)\}", HTML).group(1)
+        for decl in ("width: var(--corner);", "height: var(--corner);", "padding: 0;"):
+            self.assertIn(decl, btn)
+        self.assertIn("body.is-home .search { margin: 0; flex: 0 0 auto; width: var(--corner);", HTML)
+        self.assertIn("body.is-home .search input { height: var(--corner);", HTML)
 
     def test_every_widget_has_a_minimum_and_resizing_respects_it(self):
         mins = {i: (int(c), int(r)) for i, c, r in re.findall(r"id: '([\w-]+)'[^\n]*?min: \[(\d+), (\d+)\]", WIDGETS)}
@@ -649,10 +660,10 @@ class HomescreenContractTests(unittest.TestCase):
 
     # ---- how see-through the widgets are (the slider in the customise menu)
     def test_the_default_of_the_slider_is_the_look_the_widgets_had(self):
-        # the stage's glass tokens in the stylesheet are the default stop of the slider (22 %, 11 px, 1.9, .5, .13)
-        m = re.search(r"--lg-a: 22%;[^\n]*--lg-rim: rgba\(255,255,255,\.5\); --lg-sheen: \.13;\n\s*--lg-blur: 11px; --lg-sat: 1\.9;", HTML)
+        # the stage's glass tokens in the stylesheet are the default stop of the slider (40 %, 16 px, 1.8, .3, .06): the material of the kit
+        m = re.search(r"--lg-a: 40%;[^\n]*--lg-rim: rgba\(255,255,255,\.3\); --lg-sheen: \.06;\n\s*--lg-blur: 16px; --lg-sat: 1\.8;", HTML)
         self.assertTrue(m)
-        self.assertIn("const GLASS_STOPS = { a: [96, 22, 3], blur: [0, 11, 5], sat: [1, 1.9, 2.4], rim: [0.18, 0.5, 0.9], sheen: [0.03, 0.13, 0.24], shade: [0, 0, 0.55] };", SCRIPT)
+        self.assertIn("const GLASS_STOPS = { a: [96, 40, 6], blur: [0, 16, 6], sat: [1, 1.8, 2.4], rim: [0.12, 0.3, 0.6], sheen: [0.02, 0.06, 0.16], shade: [0, 0, 0.55], refr: [0.3, 0.7, 1], disp: [0.05, 0.2, 1] };", SCRIPT)
         self.assertIn("const GLASS_DEFAULT = 60, GLASS_MATTE = 4;", SCRIPT)
 
     def test_the_slider_lives_in_the_customise_menu_and_in_the_arranging_bar(self):
@@ -661,7 +672,7 @@ class HomescreenContractTests(unittest.TestCase):
         self.assertIn("glassControl(view, false)", menu)                           # the full control, first in the menu
         self.assertLess(menu.index("glassControl(view, false)"), menu.index("'Widgets'"))
         self.assertIn("view.editing ? glassControl(view, true) : null", bar)       # the compact one while arranging
-        self.assertIn("title: 'Customise: see-through and visible widgets'", bar)
+        self.assertIn("title: 'Customise: appearance, see-through and visible widgets'", bar)
         ctl = _between("function glassControl(view, compact) {", "// The buttons at the top")
         for needle in ("type: 'range'", "min: 0, max: 100, step: 1", "'aria-label': 'See-through, from matte to liquid'",
                        "view.setGlass(+range.value, false)",       # while dragging: look only
