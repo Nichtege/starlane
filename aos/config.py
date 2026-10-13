@@ -217,6 +217,30 @@ def _text(value, name: str) -> str:
     return " ".join(value.split())[:MAX_USER_TEXT].rstrip()
 
 
+def _whole(table: dict, key: str, default: int, name: str, lo: int | None = None, hi: int | None = None) -> int:
+    """A whole-number setting, optionally within bounds: a typo becomes a readable error, not a surprise
+    (a negative digest.keep_days used to delete today's archive)."""
+    value = table.get(key, default)
+    try:
+        if isinstance(value, bool):
+            raise ValueError
+        value = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be a whole number, not {value!r}") from None
+    if (lo is not None and value < lo) or (hi is not None and value > hi):
+        bounds = f"between {lo} and {hi}" if hi is not None else f"at least {lo}"
+        raise ValueError(f"{name} must be {bounds}, not {value}")
+    return value
+
+
+def _ignore(value) -> tuple[str, ...]:
+    if isinstance(value, str):
+        value = [value]  # `ignore = ".git"` means that one folder, not the letters . g i t
+    if not isinstance(value, (list, tuple)) or not all(isinstance(d, str) and d.strip() for d in value):
+        raise ValueError('vault.ignore must be a list of folder names, e.g. [".git", ".obsidian"]')
+    return tuple(d.strip() for d in value)
+
+
 def load_config(path: str | os.PathLike | None = None) -> Config:
     given = path or os.environ.get("AOS_CONFIG")
     cfg_path = Path(os.path.expanduser(given)) if given else default_root() / "aos.toml"   # cmd and PowerShell pass "~" through
@@ -232,7 +256,7 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
 
     vault_raw = os.environ.get("AOS_VAULT") or raw.get("vault", {}).get("path") or "~/notes"
     vault = _resolve(base, vault_raw)
-    ignore = tuple(raw.get("vault", {}).get("ignore", DEFAULT_IGNORE))
+    ignore = _ignore(raw.get("vault", {}).get("ignore", DEFAULT_IGNORE))
     data_raw = os.environ.get("AOS_DATA") or raw.get("paths", {}).get("data", "data")
     machine = os.environ.get("AOS_MACHINE") or raw.get("machine", {}).get("name") or socket.gethostname()
     digest = raw.get("digest", {})
@@ -251,17 +275,17 @@ def load_config(path: str | os.PathLike | None = None) -> Config:
         data_dir=_resolve(base, data_raw),
         machine=machine,
         digest_dir=digest_dir,
-        digest_keep_days=int(digest.get("keep_days", 14)),
-        horizon_days=int(digest.get("horizon_days", 14)),
-        large_file_kb=int(raw.get("vault", {}).get("large_file_kb", 50)),
+        digest_keep_days=_whole(digest, "keep_days", 14, "digest.keep_days", lo=0),
+        horizon_days=_whole(digest, "horizon_days", 14, "digest.horizon_days", lo=0),
+        large_file_kb=_whole(raw.get("vault", {}), "large_file_kb", 50, "vault.large_file_kb", lo=1),
         server_host="127.0.0.1",  # deliberately not configurable: local only
-        server_port=int(server.get("port", 8765)),
+        server_port=_whole(server, "port", 8765, "server.port", lo=1, hi=65535),
         routines_file=_resolve(base, raw.get("paths", {}).get("routines", "routines.toml")),
         config_file=cfg_path if cfg_path.is_file() else None,
         agents_file=_resolve(base, raw.get("paths", {}).get("agents", "agents.toml")),
         skills_dirs=tuple(dict.fromkeys(_resolve(base, d) for d in dirs)),
-        skills_cap=max(1, int(skills.get("max_runs_per_day", 10))),
-        skills_timeout_s=max(30, min(int(skills.get("timeout_s", 600)), 900)),
+        skills_cap=max(1, _whole(skills, "max_runs_per_day", 10, "skills.max_runs_per_day")),
+        skills_timeout_s=max(30, min(_whole(skills, "timeout_s", 600, "skills.timeout_s"), 900)),
         user_name=_text(os.environ.get("AOS_USER") or user.get("name", "the user"), "user.name"),
         language=_text(os.environ.get("AOS_LANGUAGE") or user.get("language", "English"), "user.language"),
         conv=_conventions(raw.get("conventions", {}), digest_dir),

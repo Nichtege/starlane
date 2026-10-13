@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import secrets
 import signal
 import subprocess
 import sys
@@ -120,15 +121,19 @@ class Busy(RuntimeError):
 
 
 class TickLock:
+    """Lock file (O_EXCL). It holds an owner token: only the holder removes it, so a run whose lock was taken over as
+    stale cannot delete the next holder's lock on its way out. refresh() keeps a long holder from looking stale."""
+
     def __init__(self, path: Path, stale_s: int = LOCK_STALE_S):
         self.path, self.stale_s, self._fd = path, stale_s, None
+        self._token = f"{os.getpid()} {secrets.token_hex(8)}".encode()
 
     def __enter__(self) -> "TickLock":
         self.path.parent.mkdir(parents=True, exist_ok=True)
         for _ in range(2):
             try:
                 self._fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                os.write(self._fd, f"{os.getpid()} {time.time()}".encode())
+                os.write(self._fd, self._token)
                 return self
             except FileExistsError:
                 try:
@@ -140,11 +145,19 @@ class TickLock:
                 raise Busy("another tick is running")
         raise Busy("could not acquire the lock file")
 
+    def refresh(self) -> None:
+        try:
+            os.utime(self.path)
+        except OSError:
+            pass
+
     def __exit__(self, *exc) -> None:
         if self._fd is not None:
             os.close(self._fd)
+            self._fd = None
             try:
-                self.path.unlink()
+                if self.path.read_bytes() == self._token:
+                    self.path.unlink()
             except OSError:
                 pass
 
@@ -268,7 +281,7 @@ def tick(cfg: Config, now: datetime | None = None, routines: list[Routine] | Non
     routines = routines if routines is not None else load_routines(cfg.routines_file)
     results: list[dict] = []
     try:
-        with TickLock(cfg.lock_file):
+        with TickLock(cfg.lock_file) as lock:
             state = load_state(cfg)
             for r in routines:
                 entry = _entry(state, r.id)
@@ -286,6 +299,7 @@ def tick(cfg: Config, now: datetime | None = None, routines: list[Routine] | Non
                 else:
                     entry["runs_today"] += 1
                     save_state(cfg, state)  # before the run: if the process dies midway, the daily count and slot are kept
+                    lock.refresh()  # each routine is under the stale limit, a whole tick of several may not be
                     rec = runner(cfg, r, "schedule", slot, now)
                     _apply_result(entry, rec, r)
                 append_run(cfg, rec)

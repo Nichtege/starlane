@@ -81,7 +81,7 @@ A browser without `backdrop-filter` at all gets the tint of "flat" through an `@
 
 | Kind | Elements | Radius | Surface |
 |---|---|---|---|
-| Pane (stage only) | `.card`, `.kpi`, `.deadline`, `.ag-card`, hero | 28 px (`--lg-r`), small ones 22 px | frost, lit rim, hairline, the drop of the kit (`0 8 48`) |
+| Pane (stage only) | `.card`, `.kpi`, `.deadline`, hero | 28 px (`--lg-r`), small ones 22 px | frost, lit rim, hairline, the drop of the kit (`0 8 48`) |
 | Control | `.btn`, `.icon-btn`, `.os-ibtn`, `.os-btn`, `.hs-atlas`, `.chip`, search field | capsule / disc | lighter tint, a highlight that follows the pointer, swells on press |
 | Tab bar | `.tabs` with the bead `.tab-ind` | capsule | the bead is the lens |
 | Popup | `.detail`, `.results`, `.w-pop`, `.hs-card`, `.os-card`, `.os-preview`, `.os-controls`, `.os-legendbox`, `.tip`, `.note`, `.os-help` | 34 px menus (`--lg-r-menu`), 38 px sheets (`--lg-r-sheet`), 28 / 22 px panes | denser tint (`--lg-a-pop`) so text never depends on what is behind it |

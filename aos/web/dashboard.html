@@ -514,41 +514,18 @@ main { padding-top: 12px; padding-bottom: 64px; }
 /* Agents */
 .ag-head { padding: 22px 2px 6px; }
 .ag-title { margin: 0 0 6px; font: 700 clamp(28px, 3vw, 34px)/1.2 var(--font); letter-spacing: -.01em; }
-.ag-sub { font: 600 17px/22px var(--font); color: var(--ink-2); margin: 26px 4px 10px; }
-.ag-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 16px 0; }
-.ag-card {
-  display: flex; flex-direction: column; gap: 8px; text-align: left; padding: 16px 18px; border-radius: var(--radius); cursor: pointer; color: inherit; font: inherit;
-  background: var(--surface); border: 0; box-shadow: var(--shadow);
-  transition: transform .35s var(--ease), box-shadow .3s;
-}
-.ag-card:hover { transform: translateY(-2px); }
-.ag-card.on { box-shadow: 0 0 0 2px var(--accent); }
-.ag-card.off { opacity: .55; cursor: not-allowed; }
-.ag-top { display: flex; align-items: center; gap: 9px; }
 .ag-name { font-weight: 600; }
-.ag-cap { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.ag-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); flex: none; }
-.ag-dot.busy { background: var(--accent); animation: ping 1.6s ease-out infinite; }
-.ag-dot.off { background: transparent; border: 1.5px solid var(--muted); }
-.ag-desc { color: var(--ink-2); font-size: 15px; }
-.ag-tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
-.ag-console { margin-top: 4px; }
-.ag-label { display: block; font: 600 13px/18px var(--font); color: var(--ink-2); margin-bottom: 8px; }
 .ag-input {
   width: 100%; min-height: 110px; resize: vertical; padding: 12px 14px; border-radius: 16px; font: inherit; font-size: 17px; line-height: 1.4; color: var(--ink);
   background: var(--fill-3); border: 0; transition: box-shadow .2s;
 }
 .ag-input:focus { outline: none; box-shadow: 0 0 0 2px var(--focus); }
 .ag-input:disabled { opacity: .6; }
-.ag-examples { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
 .ag-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ag-count { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ag-kbd { margin-left: auto; color: var(--muted); font-size: 13px; }
-.ag-jobs { display: grid; gap: 12px; }
-.ag-jobs .card + .card { margin-top: 0; }
 .job-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .job-meta { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.job-ins { margin: 10px 0 0; color: var(--ink-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 .job-res {
   margin: 12px 0 0; padding: 14px 16px; border-radius: 16px; background: var(--surface-2);
   font: 15px/1.5 var(--font); white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto;
@@ -602,7 +579,6 @@ main { padding-top: 12px; padding-bottom: 64px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .err-box { padding: 12px 14px; border-radius: 16px; background: var(--crit-bg); color: var(--crit-ink); font-size: 15px; overflow-wrap: anywhere; }
 .err-box .btn { margin-top: 8px; }
-.ok-ink { color: var(--good-ink); }
 code.cli { display: block; font: 13px/1.5 var(--mono); padding: 10px 12px; border-radius: 12px; background: var(--surface-2); overflow-wrap: anywhere; white-space: pre-wrap; color: var(--ink); }
 
 /* Markdown (answers, notes): built safely as DOM, never as HTML */
@@ -709,14 +685,10 @@ body.dragging-w { -webkit-user-select: none; user-select: none; cursor: grabbing
 .btn.primary[disabled]:not([aria-busy="true"]) { opacity: .4; filter: saturate(.4); }
 .badge { display: inline-flex; align-items: center; gap: 5px; font: 600 12px/16px var(--font); padding: 2px 9px; border-radius: 999px; background: var(--fill-3); color: var(--ink-2); white-space: nowrap; }
 .badge::before { content: ""; width: 6px; height: 6px; background: currentColor; }
-.badge.src-user::before { border-radius: 50%; }
 .refs summary { cursor: pointer; font-size: 15px; color: var(--accent-ink); min-height: 30px; display: inline-flex; align-items: center; gap: 6px; }
 .refs summary:hover { color: var(--ink); }
 .refs ul { margin: 6px 0 0; padding: 8px 12px; list-style: none; border-radius: 12px; background: var(--surface-2); font: 12.5px/1.7 var(--mono); color: var(--ink-2); overflow-wrap: anywhere; }
-.sk-ctl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 .sk-input { min-height: 84px; }
-.sk-status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-height: 0; font-size: 14px; }
-.sk-status:empty { display: none; }
 .sk-out { display: grid; gap: 10px; }
 .sk-out:empty { display: none; }
 .sk-out .job-res { margin: 0; }
@@ -763,7 +735,7 @@ body.dragging-w { -webkit-user-select: none; user-select: none; cursor: grabbing
 .art-empty { text-align: center; padding: 34px 18px; color: var(--muted); }
 .art-empty .kind-ico { width: 44px; height: 44px; border-radius: 12px; margin-bottom: 8px; }
 @media (max-width: 640px) {
-  .sk-ctl { grid-template-columns: minmax(0, 1fr); } .art-frame { height: 64vh; } .clock-big { font-size: 40px; }
+  .art-frame { height: 64vh; } .clock-big { font-size: 40px; }
   .art-pane.card { padding: 14px; } .art-doc { padding: 12px; } .bars .b-v { font-size: 9.5px; }
 }
 
@@ -807,8 +779,6 @@ body.dragging-w { -webkit-user-select: none; user-select: none; cursor: grabbing
 .os-pbtn:focus-visible, .os-check input:focus-visible, .os-range:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .os-stage[data-arrive="true"] .os-bar, .os-stage[data-arrive="true"] .os-controls, .os-stage[data-arrive="true"] .os-leg { animation: os-arrive .9s var(--ease) both; }
 @keyframes os-arrive { from { opacity: .25; } to { opacity: 1; } }
-.os-top { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
-.os-top strong { font: 600 17px var(--font); color: var(--ink); }
 .os-input { width: 100%; box-sizing: border-box; min-height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--fill-3); color: var(--ink); font: 15px var(--font); }
 .os-input::placeholder { color: var(--muted); }
 .os-segs-2 { grid-template-columns: repeat(2, 1fr) !important; }
@@ -883,15 +853,10 @@ body.dragging-w { -webkit-user-select: none; user-select: none; cursor: grabbing
    ===================================================================== */
 /* OS home: header, three columns, stage */
 .os-home { display: grid; gap: 16px; }
-.os-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 18px; }
 .home-mid .hero { padding: 6px 2px 0; }
 .home-mid .hero-title { font-size: clamp(22px, 2.1vw, 30px); margin: 6px 0 6px; max-width: none; }
 .home-mid .hero-sub { font-size: 14px; }
 .home-mid .hero-actions { margin-top: 10px; }
-.os-top .hero { padding: 4px 2px 0; flex: 1 1 340px; min-width: 0; }
-.os-top .hero-title { font-size: clamp(24px, 2.5vw, 36px); margin: 6px 0 6px; max-width: none; }
-.os-top .hero-sub { font-size: 14.5px; }
-.os-top .hero-actions { margin-top: 12px; }
 .os-tools { display: flex; align-items: center; gap: 8px; position: relative; flex: none; padding-top: 4px; }
 .os-ibtn {
   list-style: none; display: inline-grid; place-items: center; width: 44px; height: 44px; cursor: pointer; padding: 0;
@@ -1192,7 +1157,7 @@ body.is-home .bg i:nth-child(3) { background: radial-gradient(closest-side, var(
 body.is-home .tabs-wrap, body.is-home .notice:empty { display: none; }
 body.is-home main.wrap, body.is-brain main.wrap, body.is-atlas main.wrap { max-width: none; padding: 0; }
 /* Second brain: fullscreen without header; its own bar leads back */
-body.is-brain header.top, body.is-brain .tabs-wrap, body.is-brain .notice, body.is-brain .os-hint-line { display: none; }
+body.is-brain header.top, body.is-brain .tabs-wrap, body.is-brain .notice { display: none; }
 body.is-brain { overflow: hidden; height: 100vh; }
 body.is-brain .os-stage { height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
 body.is-brain main > .hint, body.is-brain #panel-os .hint { display: none; }
@@ -1747,7 +1712,7 @@ html[data-glass="flat"] *, html[data-glass="flat"] *::before, html[data-glass="f
 }
 
 /* Colour of a widget (the :where keeps the specific rules below stronger) */
-:where(.card, .kpi, .deadline, .stage, .hero, .ag-card) { --wc: var(--accent); }
+:where(.card, .kpi, .deadline, .stage, .hero) { --wc: var(--accent); }
 .widget[data-wid="calendar"], .widget[data-wid="clocks"], .widget[data-wid="apps"], .widget[data-wid="launch"], .widget[data-wid="recent"] { --wc: var(--cyan); }
 .widget[data-wid="deadlines"], .widget[data-wid="artifacts"] { --wc: var(--pink); }
 .widget[data-wid="upcoming"], .widget[data-wid="routines"], .widget[data-wid="runs"], .widget[data-wid="health"] { --wc: var(--violet); }
@@ -1756,7 +1721,7 @@ html[data-glass="flat"] *, html[data-glass="flat"] *::before, html[data-glass="f
 
 /* ---- Panes over the stage: widgets, key figures, deadlines. Frost, a lit edge, a hairline and the drop of the kit;
    the lens is added by the script where it is affordable */
-html:root body:not(.is-page) :is(.card, .kpi, .deadline, .ag-card, .hero) {
+html:root body:not(.is-page) :is(.card, .kpi, .deadline, .hero) {
   border: 0; border-radius: var(--lg-r);
   background:
     var(--lg-over, linear-gradient(transparent, transparent)),
@@ -1815,13 +1780,13 @@ html:root body .chip[aria-pressed="true"] .n { color: inherit; opacity: .8; }
 html:root body .btn[disabled] { opacity: .5; }
 
 /* The same pieces inside a pane: flat fills (a second blur would only ever see the pane) */
-html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card, .look)
+html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .look)
   :is(.btn, .icon-btn, .os-ibtn, .os-btn, .chip) {
   background: var(--fill-2); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none;
 }
-html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card, .look)
+html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .look)
   :is(.btn, .icon-btn, .os-ibtn, .os-btn, .chip):hover { background: var(--fill-1); }
-html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .ag-card, .look)
+html:root body :is(.card, .detail, .results, .w-pop, .hs-card, .os-card, .os-preview, .os-controls, .os-legendbox, .mp-pop, .atl-rail, .atl-chat, .agx-box, .atl-recent-pop, .note, .hero, .kpi, .deadline, .look)
   :is(.btn.primary, .os-btn.solid, .chip[aria-pressed="true"], .os-btn[aria-pressed="true"]) {
   color: var(--on-accent); background: var(--accent-btn); box-shadow: none;
 }
@@ -2024,7 +1989,7 @@ html:root body.is-brain .os-card { padding: 11px 14px; }
     <ul id="q-list" class="results" role="listbox" aria-label="Search results" hidden></ul>
   </div>
   <div class="actions">
-    <button id="refresh" class="btn" type="button" hidden><span aria-hidden="true">↻</span><span class="lbl-wide">Refresh</span></button>
+    <button id="refresh" class="btn" type="button" aria-label="Refresh" hidden><span aria-hidden="true">↻</span><span class="lbl-wide">Refresh</span></button>
     <button id="glass" class="btn" type="button"></button>
     <button id="theme" class="btn" type="button"></button>
   </div>
@@ -4349,24 +4314,6 @@ function artTime(a) {
   const d = String(a.mtime).slice(0, 10), n = daysFromToday(d);
   return n === 0 ? fmtClock(a.mtime) : n === -1 ? 'yesterday' : isNaN(n) ? '' : fmtDay(d);
 }
-// Skills: quick start, jumps to the card in the Skills tab
-function skillsWidget() {
-  const card = h('div', { class: 'card' }, h('h2', null, 'Skills'));
-  if (!G.skills.length) {
-    card.append(h('p', { class: 'empty' }, 'No skills yet.'), h('p', { class: 'cap', style: { margin: 0 } }, 'A skill is a folder with a SKILL.md, e.g. skills/weekly-plan/SKILL.md.'));
-    return card;
-  }
-  card.append(h('div', { class: 'qlist' }, G.skills.slice(0, 4).map(s => {
-    const run = SKILL_RUNS.get(s.id), busy = s.busy || !!(run && run.job && run.job.status === 'running');
-    return h('button', { type: 'button', class: 'qbtn', onclick: () => openSkill(s.id), 'aria-label': 'Open skill ' + s.name + (busy ? ', running' : '') },
-      h('span', { class: 'kind-ico k-skill' }, strokeIcon(SKILL_ICON, 15)), h('span', { class: 'q-title' }, s.name),
-      h('span', { class: 'q-side' }, busy ? 'running …' : s.cap ? s.runs_today + '/' + s.cap : ''),
-      h('span', { class: 'q-sub' }, s.model + (s.effort ? ' · ' + s.effort : '') + ' · ' + (s.description || 'no description')));
-  })),
-  h('button', { type: 'button', class: 'btn small w-more', onclick: () => showView('skills', { focus: true }) }, G.skills.length > 4 ? 'All ' + G.skills.length + ' skills' : 'Go to skill deck'));
-  return card;
-}
-
 function buildHero() {
   const d = G.digest;
   const hour = new Date().getHours();

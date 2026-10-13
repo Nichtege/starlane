@@ -73,7 +73,7 @@ class GlassCssTests(unittest.TestCase):
 
     def test_panes_and_controls_share_one_surface_recipe(self):
         css = _glass_css()
-        pane = re.search(r"html:root body:not\(\.is-page\) :is\(\.card, \.kpi, \.deadline, \.ag-card, \.hero\) \{([^}]*)\}", css)
+        pane = re.search(r"html:root body:not\(\.is-page\) :is\(\.card, \.kpi, \.deadline, \.hero\) \{([^}]*)\}", css)
         self.assertTrue(pane)
         ctl = re.search(r"html:root body :is\(\.btn, \.icon-btn, \.os-ibtn, \.os-btn, \.hs-atlas, \.chip, \.search input\) \{([^}]*)\}", css)
         self.assertTrue(ctl)
