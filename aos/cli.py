@@ -14,6 +14,7 @@ from . import __version__
 from . import agentdefs as AD
 from . import agents as A
 from . import digest as D
+from . import notion as N
 from .config import INSTALLED, PROJECT_ROOT, SHIPPED_DIR, Config, Conventions, aos_cmd, home_dir, home_is_checkout, load_config
 from .dates import now_local
 from .mapcheck import run_checks
@@ -490,6 +491,97 @@ def cmd_jobs(cfg: Config, args) -> int:
     return 0
 
 
+def _notion_line(r: dict) -> str:
+    return (f" {r['id']}  {r['created'][:16].replace('T', ' ')}  {r['kind']} \"{r['title']}\"  {r.get('url') or r['target']}\n"
+            f"      why: {r['why']}")
+
+
+def cmd_notion(cfg: Config, args) -> int:
+    st = N.status(cfg, A.load_agents(cfg.agents_file))
+    if not st["agent"]:
+        _out("No Notion agent (an agent with the tool \"Notion\" in agents.toml).")
+    else:
+        parts = [("Node", st["node"]), (f"server {N.VERSION}", st["installed"]), ("token", st["token"])]
+        _out(f"Notion agent: {st['agent']} · " + " · ".join(f"{name} {'✓' if ok else '✗'}" for name, ok in parts)
+             + ("" if st["ready"] else " · run `python -m aos notion-connect`"))
+    if not st["requests"]:
+        _out("No deletion requests are waiting.")
+        return 0
+    _out(f"Waiting for you ({len(st['requests'])}): approve with `python -m aos notion-approve <id>`, keep with `python -m aos notion-deny <id>`")
+    for r in st["requests"]:
+        _out(_notion_line(r))
+    return 0
+
+
+def cmd_notion_connect(cfg: Config, args) -> int:
+    if not N.node():
+        _out("Node is missing: install it from https://nodejs.org (the LTS version), then run this again.")
+        return 2
+    if N.installed(cfg):
+        _out(f"Notion's MCP server {N.VERSION} is installed.")
+    else:
+        _out(f"Downloading Notion's MCP server {N.PACKAGE} {N.VERSION} (checked against npm's checksum) …")
+        try:
+            N.install(cfg)
+        except (N.NotionError, OSError, KeyError) as exc:
+            _out(f"Not installed: {exc}")
+            return 1
+        _out(f"Installed in {N.server_dir(cfg)}")
+    if args.token_stdin:
+        given = sys.stdin.readline().strip()
+    elif N.token(cfg) and not args.new_token:
+        given = ""
+    else:
+        import getpass
+
+        _out("Create an internal integration at https://www.notion.so/profile/integrations (capabilities: read, update and insert")
+        _out("content, read and insert comments) and paste its secret here. It is stored in the data folder, not in the project.")
+        given = getpass.getpass("Notion token (input hidden): ").strip()
+    if given:
+        try:
+            N.save_token(cfg, given)
+        except N.NotionError as exc:
+            _out(str(exc))
+            return 2
+    elif not N.token(cfg):
+        _out("No token given.")
+        return 2
+    try:
+        name = N.who(cfg)
+    except N.NotionError as exc:
+        _out(f"The token does not work: {exc}")
+        return 1
+    _out(f"Connected as \"{name}\". In Notion, share each page or database the agent may use with this integration:")
+    _out(f"  open the page → ••• → Connections → {name}. Sub-pages follow. Nothing else is visible to Starlane.")
+    if os.environ.get("NOTION_TOKEN"):
+        _out("Note: NOTION_TOKEN is set in your environment and wins over the stored token.")
+    return 0
+
+
+def _notion_decide(cfg: Config, rid: str, approve: bool) -> int:
+    try:
+        rec = N.decide(cfg, rid, approve)
+    except KeyError:
+        _out(f"No waiting deletion request {rid} (`python -m aos notion` lists them).")
+        return 2
+    if rec["status"] == "deleted":
+        _out(f"Deleted: {rec['kind']} \"{rec['title']}\"" + (" (in Notion's trash for 30 days)" if rec["kind"] == "page" else ""))
+    elif rec["status"] == "kept":
+        _out(f"Kept: {rec['kind']} \"{rec['title']}\". The request is closed.")
+    else:
+        _out(f"Not deleted: {rec['note']}")
+        return 1
+    return 0
+
+
+def cmd_notion_approve(cfg: Config, args) -> int:
+    return _notion_decide(cfg, args.id, True)
+
+
+def cmd_notion_deny(cfg: Config, args) -> int:
+    return _notion_decide(cfg, args.id, False)
+
+
 def cmd_doctor(cfg: Config, args) -> int:
     problems = 0
 
@@ -539,6 +631,15 @@ def cmd_doctor(cfg: Config, args) -> int:
         check(bool(agents), "agents.toml valid, prompts present", f"{len(agents)} agents" if agents else f"no agents ({cfg.agents_file})", fatal=bool(agents))
     except A.AgentError as exc:
         check(False, "agents.toml", str(exc))
+        agents = []
+    st = N.status(cfg, agents)
+    if st["enabled"]:
+        hint = "run `python -m aos notion-connect`"
+        check(st["node"], "Node (for the Notion agent)", "" if st["node"] else "install it from nodejs.org", fatal=False)
+        check(st["installed"], f"Notion's MCP server {N.VERSION}", "" if st["installed"] else hint, fatal=False)
+        check(st["token"], "Notion token", "" if st["token"] else hint, fatal=False)
+        if st["requests"]:
+            check(False, "Notion deletion requests", f"{len(st['requests'])} waiting for you (`python -m aos notion`)", fatal=False)
     from . import skills as S
 
     found = S.discover(cfg)
@@ -690,6 +791,17 @@ def build_parser() -> argparse.ArgumentParser:
     ar.add_argument("-n", type=int, default=30)
     ar.set_defaults(fn=cmd_artifacts)
     sub.add_parser("spend", help="what the runs cost (today, 7 days, month)").set_defaults(fn=cmd_spend)
+    sub.add_parser("notion", help="the Notion agent: connection and the deletion requests waiting for you").set_defaults(fn=cmd_notion)
+    nc = sub.add_parser("notion-connect", help="set up Notion: download its MCP server (pinned, checked) and store your token")
+    nc.add_argument("--token-stdin", action="store_true", help="read the token from the first line of stdin")
+    nc.add_argument("--new-token", action="store_true", help="ask for a token even if one is stored")
+    nc.set_defaults(fn=cmd_notion_connect)
+    na = sub.add_parser("notion-approve", help="approve a deletion request: Starlane deletes it in Notion now")
+    na.add_argument("id")
+    na.set_defaults(fn=cmd_notion_approve)
+    nd = sub.add_parser("notion-deny", help="deny a deletion request: nothing is deleted")
+    nd.add_argument("id")
+    nd.set_defaults(fn=cmd_notion_deny)
     j = sub.add_parser("jobs", help="recent agent jobs (with <id>: the full answer)")
     j.add_argument("id", nargs="?")
     j.add_argument("-n", type=int, default=15)

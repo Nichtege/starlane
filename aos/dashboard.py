@@ -47,6 +47,7 @@ from urllib.parse import quote
 from . import agents as A
 from . import artifacts as AR
 from . import digest as D
+from . import notion as N
 from . import skills as S
 from .config import Config
 from .graph import build_graph, changes_by_day
@@ -81,6 +82,10 @@ def build_data(cfg: Config, now: datetime | None = None, api: dict | None = None
         agents = [{"id": "agents.toml", "name": "agents.toml", "description": str(exc), "model": "", "tools": [], "enabled": False,
                    "timeout_s": 0, "cap": 0, "runs_today": 0, "busy": False}]
     try:
+        notion = N.status(cfg, A.load_agents(cfg.agents_file))
+    except A.AgentError:
+        notion = N.status(cfg)
+    try:
         skills = A.skills_board(cfg, now)
     except OSError:
         skills = []
@@ -109,6 +114,7 @@ def build_data(cfg: Config, now: datetime | None = None, api: dict | None = None
         "skills": skills,
         "options": {"models": list(S.MODELS), "efforts": list(S.EFFORTS)},
         "spend": A.spend(cfg, now),
+        "notion": notion,
         "artifacts": AR.list_artifacts(cfg),
         "conventions": conventions(cfg),
         "api": api,

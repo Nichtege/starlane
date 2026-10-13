@@ -85,7 +85,7 @@ class ProcessGroups(TempVaultCase):
             with mock.patch.object(sys, "platform", platform), mock.patch.object(A, "find_claude", return_value=("/x/claude", "")), \
                     mock.patch.object(A, "claude_command", return_value=["/x/claude"]), mock.patch.object(A, "workdir", return_value=self.root), \
                     mock.patch.object(A.subprocess, "Popen", return_value=proc) as popen:
-                A._run(self.cfg, mock.MagicMock(timeout_s=5), "system", "instruction")
+                A._run(self.cfg, mock.MagicMock(timeout_s=5, notion=False, job=""), "system", "instruction")
             self.assertIs(popen.call_args.kwargs["start_new_session"], expected, platform)
             self.assertIn("creationflags", popen.call_args.kwargs)
 
@@ -103,12 +103,12 @@ class ProcessGroups(TempVaultCase):
         proc.communicate.side_effect = KeyboardInterrupt
         with mock.patch.object(A, "find_claude", return_value=("/x/claude", "")), mock.patch.object(A, "claude_command", return_value=["/x/claude"]),                 mock.patch.object(A, "workdir", return_value=self.root), mock.patch.object(A.subprocess, "Popen", return_value=proc),                 mock.patch.object(A, "_kill_tree") as kill:
             with self.assertRaises(KeyboardInterrupt):
-                A._run(self.cfg, mock.MagicMock(timeout_s=5), "system", "instruction")
+                A._run(self.cfg, mock.MagicMock(timeout_s=5, notion=False, job=""), "system", "instruction")
         kill.assert_called_once_with(proc)
 
     def _agent_run(self, proc):
         with mock.patch.object(A, "find_claude", return_value=("/x/claude", "")), mock.patch.object(A, "claude_command", return_value=["/x/claude"]),                 mock.patch.object(A, "workdir", return_value=self.root), mock.patch.object(A.subprocess, "Popen", return_value=proc):
-            return A._run(self.cfg, mock.MagicMock(timeout_s=5), "system", "instruction")
+            return A._run(self.cfg, mock.MagicMock(timeout_s=5, notion=False, job=""), "system", "instruction")
 
     def test_a_running_agent_is_known_until_it_ends_and_a_stopped_server_ends_it(self):
         proc = mock.MagicMock(returncode=0)
@@ -135,7 +135,9 @@ class ProcessGroups(TempVaultCase):
         def runner(cfg, agent, instruction):
             raise KeyboardInterrupt
         with self.assertRaises(KeyboardInterrupt):
-            A._finish(self.cfg, mock.MagicMock(vault=False), job, runner)  # not mixed: no web guard setup
+            agent = A.Agent(id="research", name="Research", description="", model="", tools=("Read",), timeout_s=30,
+                            max_runs_per_day=5, enabled=True, prompt_file=Path("."))
+            A._finish(self.cfg, agent, job, runner)  # not mixed: no web guard setup
         rec = next(j for j in A.all_jobs(self.cfg) if j["id"] == "j-ctrl-c")
         self.assertEqual(rec["status"], "failed")        # not "running": the agent would count as busy for the next 16 minutes
         self.assertIn("Ctrl+C", rec["note"])

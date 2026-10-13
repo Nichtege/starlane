@@ -1,6 +1,6 @@
 # Agents and Atlas
 
-An agent is a specialist with one job: a prompt file, a short description, and a fixed set of read-only tools. Atlas is the coordinator that decides which agents work on a task. You talk to Atlas in the dashboard (`python -m aos serve`, then the Atlas view, or key `A` on the home page) or to one agent directly in the terminal:
+An agent is a specialist with one job: a prompt file, a short description, and a fixed set of tools: read-only, except the Notion agent's. Atlas is the coordinator that decides which agents work on a task. You talk to Atlas in the dashboard (`python -m aos serve`, then the Atlas view, or key `A` on the home page) or to one agent directly in the terminal:
 
 ```
 python -m aos agents                      # list agents, limits and today's runs
@@ -8,7 +8,7 @@ python -m aos agent research "What do my notes say about sleep?"
 python -m aos jobs                        # recent tasks and their answers
 ```
 
-Every agent is `claude -p` started headless, without connectors and without a saved session: every agent that reads your vault (all shipped ones) in your vault folder, a web-only agent in an empty sandbox folder (`data/agents/sandbox/`). It can read and search, never write, edit or run anything. Its answer is shown in the dashboard and stored in `data/agents/jobs.jsonl`; it never ends up in your notes. The full rules are in [security.md](security.md).
+Every agent is `claude -p` started headless, without connectors and without a saved session: every agent that reads your vault (all shipped ones) in your vault folder, a web-only agent in an empty sandbox folder (`data/agents/sandbox/`). It can read and search, never write, edit or run anything; the one exception is the Notion agent, which also changes the Notion pages you share with it ([notion.md](notion.md)). Its answer is shown in the dashboard and stored in `data/agents/jobs.jsonl`; it never ends up in your notes. The full rules are in [security.md](security.md).
 
 ## The shipped agents
 | Agent | Group | Access | Use it for |
@@ -21,13 +21,14 @@ Every agent is `claude -p` started headless, without connectors and without a sa
 | `data-analyst` | Analysis | vault + web | interpreting pasted numbers and tables |
 | `coder` | Code | vault + web | writing and explaining code (never runs it) |
 | `tutor` | Learning | vault + web | explanations in small steps with practice questions |
+| `notion` | Notion | vault + Notion | saving results to Notion, updating pages and databases; deletes only with your yes ([notion.md](notion.md)) |
 
 They are a starting set, not a limit. Add the specialists you actually need (see below).
 
 ## How Atlas routes a task
 1. **Plan.** One short call sees the catalog as one line per agent, `id: description`, and nothing else. It picks up to three agents and writes a sub-task for each. Short, clear questions are planned with a smaller model; long or multi-part ones go straight to a stronger one.
-2. **Work.** The chosen agents run in parallel (at most three tasks at a time in total).
-3. **Review.** Atlas reads their reports and either answers you or starts another round (at most three rounds). Only when you pick an agent yourself in the Atlas view does its answer pass through unchanged, without a plan or review.
+2. **Work.** The chosen agents run in parallel (at most three tasks at a time in total). While they work they can ask each other (see [below](#agents-talk-to-each-other)).
+3. **Review.** Atlas reads their reports, with the conversations they had with other agents, and either answers you or starts another round (at most three rounds). Only when you pick an agent yourself in the Atlas view does its answer pass through unchanged, without a plan or review.
 4. **Scope check.** Every agent receives its own description as its scope. If a sub-task does not belong there, it replies only `[OUT_OF_SCOPE] <which area fits>`, and Atlas picks someone else instead of getting a guessed answer.
 5. **Fallback.** If the plan is unusable, the `keywords` decide: the agent with the most keyword hits wins, otherwise the default agent from `[atlas] default` in `agents.toml`.
 
@@ -69,12 +70,20 @@ Tips:
 - Name the neighbours by their display name with an arrow, so Atlas and the agent learn where those tasks go.
 - Keep `examples` realistic: three first messages a person would really type, 8 to 22 words, no personal data. The dashboard shows them as suggestions.
 
+## Agents talk to each other
+While an agent works on a task it can ask another agent (tool `ask_agent`, served by Starlane's own MCP server, `aos/peers.py`) and go on with the answer: the planner asks Research what your notes say about a deadline, the writer asks the Notion agent to save its draft. When the task is done, every specialist reports to Atlas as before, and Atlas' review sees who asked whom and what came back. In the dashboard, *Agents talked* under an answer shows the same.
+- The asked agent sees whose message it is and your request next to it. The message is material, not an instruction from you: it refuses what your request does not cover.
+- Web-only agents neither ask nor are asked, so vault text never reaches them. An agent cannot ask itself or anyone who is already waiting for its answer.
+- At most two levels (an asked agent may ask once more, not further) and eight messages per task. A busy agent is waited for up to four minutes: one task per agent at a time, so Notion is changed by one run at a time.
+- Every message is a job of its own (`via: peer` in `jobs.jsonl`), with the agent's daily cap and the daily spending ceiling. A run that may ask gets ten more minutes, since waiting for answers is part of it.
+
 ## Choosing tools: vault, or vault and web
 | Access | Tools | Good for |
 |---|---|---|
 | Read vault | `Read`, `Grep`, `Glob` | anything that should come from your notes |
 | Vault and web (`mixed = true`) | `Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch` | current facts, documentation, anything outside your notes, with your notes as context |
 | Web only (by hand) | `WebSearch`, `WebFetch` | an agent that must never see your notes |
+| Vault and Notion (one agent) | `Read`, `Grep`, `Glob`, `Notion` | the agent that writes to Notion; never with web tools ([notion.md](notion.md)) |
 
 Every agent reads your vault, so it knows what you already wrote on the matter. An agent that also searches the web has both kinds of tools, which loading accepts only with `mixed = true`: the shipped web agents set it, and the dashboard and `aos agent-new` set it for every agent created with web access. The runtime then adds two rules to its prompt: look in the vault first, and never put note text, note paths, names or private details from notes into a search query or a URL.
 
@@ -126,7 +135,8 @@ You do not need to repeat the tool rules, the reply language or "never reveal se
 |---|---|
 | Time per task (`timeout_s`) | default 300 s (vault) / 480 s (web), at most 900 s |
 | Tasks per agent and day (`max_runs_per_day`) | per agent; custom agents 1 to 200 |
-| Parallel tasks | one per agent, three in total |
+| Parallel tasks | one per agent, three in total (an agent asked by another does not count toward the three) |
+| Messages between agents | eight per task, two levels deep, four minutes of waiting for a busy agent |
 | Task length | 4000 characters |
 | Answer length | 20,000 characters (longer answers are cut) |
 | Turns and budget per `claude` call | 12 turns, $10 (a guard against loops, not a spending target) |

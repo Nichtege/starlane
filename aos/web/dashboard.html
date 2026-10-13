@@ -1230,6 +1230,18 @@ body.is-atlas main > .hint { display: none; }
 .atl-route { margin: 0 0 6px; }
 .atl-work { display: flex; align-items: center; gap: 10px; margin: 6px 0; color: var(--ink-2); font-size: 15px; }
 .atl-err { margin: 0; padding: 8px 12px; color: var(--crit-ink); border-radius: 12px; background: var(--crit-bg); font-size: 15px; }
+/* What the agents said to each other, and what the Notion agent changed: folded under the answer */
+.atl-talks { margin-top: 10px; font-size: 14px; color: var(--ink-2); }
+.atl-talks summary { cursor: pointer; font-weight: 600; }
+.atl-talks ol { margin: 6px 0 0; padding-left: 20px; }
+.atl-talks li { margin: 6px 0; }
+.atl-talks li p { margin: 2px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.atl-talks li .who { color: var(--ink); font-weight: 600; }
+/* Deletions the Notion agent asks for: nothing goes before you decide */
+.atl-notion { display: grid; gap: 10px; padding: 12px 14px; border-radius: 16px; background: var(--warn-bg); }
+.atl-notion h3 { margin: 0; font: 600 13px var(--font); color: var(--warn-ink); }
+.atl-notion-req p { margin: 0 0 8px; overflow-wrap: anywhere; font-size: 15px; }
+.atl-notion-req .row { display: flex; flex-wrap: wrap; gap: 8px; }
 .atl-comp { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
 .atl-input { width: 100%; resize: none; min-height: 44px; max-height: 190px; padding: 11px 16px; font: 17px/1.3 var(--font); color: var(--ink); background: var(--fill-3); border: 0; border-radius: 22px; }
 .atl-input:focus { outline: none; box-shadow: 0 0 0 2px var(--focus); }
@@ -2759,6 +2771,51 @@ function extLink(url, label) {
   return h('a', { class: 'lnk ext', href: url, target: '_blank', rel: 'noopener noreferrer', title: url }, label,
     bare ? null : h('span', { class: 'lnk-host' }, ' (' + (linkHost(url) || url) + ')'));
 }
+// Under an answer: who asked whom while working (Atlas saw it too) and what the Notion agent changed. Folded.
+function jobTalks(j) {
+  const talks = Array.isArray(j.talks) ? j.talks : [], changes = Array.isArray(j.notion_changes) ? j.notion_changes : [];
+  if (!talks.length && !changes.length) return null;
+  const out = h('div', null);
+  if (talks.length) out.append(h('details', { class: 'atl-talks' },
+    h('summary', null, 'Agents talked: ' + talks.length + (talks.length === 1 ? ' message' : ' messages')),
+    h('ol', null, talks.map(t => h('li', null,
+      h('span', { class: 'who' }, whoName(t.from).name + ' → ' + whoName(t.to).name), t.status === 'ok' ? null : ' (' + String(t.status || '') + ')',
+      h('p', null, String(t.message || '')), h('p', null, '↳ ' + String(t.answer || '')))))));
+  if (changes.length) out.append(h('details', { class: 'atl-talks' },
+    h('summary', null, 'Changed in Notion: ' + changes.length + (changes.length === 1 ? ' change' : ' changes')),
+    h('ol', null, changes.map(c => h('li', null, String(c.tool || '').replace(/-/g, ' ') + (c.target ? ' · ' + String(c.target) : ''))))));
+  return out;
+}
+// Deletions the Notion agent asked for. Only you decide; Starlane itself deletes after a yes (a page goes to Notion's trash).
+const notionAsks = () => (G && G.raw && G.raw.notion && Array.isArray(G.raw.notion.requests) ? G.raw.notion.requests : []);
+function notionAsksBox(asks) {
+  return h('section', { class: 'atl-notion', 'aria-label': 'Waiting for your decision' },
+    h('h3', null, 'Notion · waiting for you'),
+    asks.map(r => {
+      const yes = h('button', { type: 'button', class: 'btn small' }, 'Delete'), no = h('button', { type: 'button', class: 'btn small primary' }, 'Keep');
+      const both = [yes, no];
+      yes.addEventListener('click', () => decideNotion(r, true, both));
+      no.addEventListener('click', () => decideNotion(r, false, both));
+      const url = /^https:\/\/(www\.)?notion\.so\//.test(String(r.url || '')) ? String(r.url) : '';
+      return h('div', { class: 'atl-notion-req' },
+        h('p', null, h('b', null, (r.kind === 'page' ? 'Delete the page “' : 'Delete the block “') + String(r.title || '') + '”?'), ' ',
+          String(r.why || ''), url ? [' ', extLink(url, 'Open in Notion')] : null),
+        h('div', { class: 'row' }, no, yes));
+    }));
+}
+async function decideNotion(r, approve, btns) {
+  if (!G.api || !G.api.notion) { notice('File view: decide with python -m aos notion-approve or notion-deny.', 'error'); return; }
+  btns.forEach(b => { b.disabled = true; });
+  try {
+    await apiFetch(G.api.notion + encodeURIComponent(r.id), { method: 'POST', body: JSON.stringify({ decision: approve ? 'approve' : 'deny' }) });
+    notice(approve ? 'Deleted in Notion: “' + String(r.title || '') + '”' + (r.kind === 'page' ? ' (in Notion’s trash for 30 days).' : '.')
+      : 'Kept: “' + String(r.title || '') + '”.', 'ok');
+  } catch (e) {
+    notice('Not done: ' + e.message, 'error');
+    btns.forEach(b => { b.disabled = false; });
+  }
+  refreshData(false, true);
+}
 const MD_LIST = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
 const mdTableSep = l => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l) && l.includes('-');
 const mdCells = l => l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
@@ -2947,7 +3004,8 @@ function normalize(raw) {
     api: api && safePath(api.run) && safePath(dataPath) ? { token: str(api.token), run: api.run, data: dataPath,
       agents: safePath(api.agents) ? api.agents : null, jobs: safePath(api.jobs) ? api.jobs : null,
       atlas: safePath(api.atlas) ? api.atlas : null, skills: safePath(api.skills) ? api.skills : null,
-      artifact: safePath(api.artifact) ? api.artifact : null, agent_defs: safePath(api.agent_defs) ? api.agent_defs : null } : null,
+      artifact: safePath(api.artifact) ? api.artifact : null, agent_defs: safePath(api.agent_defs) ? api.agent_defs : null,
+      notion: safePath(api.notion) ? api.notion : null } : null,
     raw,
   };
 }
@@ -5457,7 +5515,7 @@ const AgentsView = {
         if (!v.query && !v.group) kids.push(v.railRow('atlas', 'Atlas (automatic)', 'Picks the right specialists for you', false, false));
         for (const g of atlasGroups(ags, v.query, v.group)) {
           kids.push(h('div', { class: 'atl-gh' }, g.name, h('i', null, String(g.agents.length))));
-          for (const a of g.agents) kids.push(v.railRow(String(a.id), String(a.name || a.id), String(a.description || ''), !!a.web, a.enabled === false));
+          for (const a of g.agents) kids.push(v.railRow(String(a.id), String(a.name || a.id), String(a.description || ''), !!a.web, a.enabled === false, !!a.notion));
         }
         if (!v.rows.size || (v.rows.size === 1 && v.rows.has('atlas') && ags.length === 0)) kids.push(h('p', { class: 'atl-empty' }, v.query ? 'No agent matches “' + v.query.trim() + '”.' : 'No agents. Create one with “+ New agent” or add some to agents.toml.'));
       } else {
@@ -5477,13 +5535,14 @@ const AgentsView = {
     }
     v.syncRail();
   },
-  railRow(id, name, desc, web, off) {
+  railRow(id, name, desc, web, off, notion) {
     const v = this;
     const st = h('span', { class: 'atl-st' });
     const btn = h('button', { type: 'button', class: 'atl-row', 'aria-pressed': 'false', onclick: () => v.select(id) },
       h('span', { class: 'atl-dot', 'aria-hidden': 'true' }),
       h('span', { class: 'atl-nm' }, name),
       web ? h('span', { class: 'atl-web', title: 'Can search the web' }, 'Web') : null,
+      notion ? h('span', { class: 'atl-web', title: 'Reads and changes your Notion' }, 'Notion') : null,
       st, h('span', { class: 'atl-ds' }, desc));
     v.rows.set(id, { btn, st, off });
     return btn;
@@ -5598,7 +5657,9 @@ const AgentsView = {
   renderLog(force) {
     const v = this, t = v.threadObj(), jobs = t ? t.jobs : [];
     const tick = jobs.some(j => v.isRunning(j)) ? Math.floor(Date.now() / 5000) : 0;
-    const sig = [v.thread, v.sel, v.err, v.sending, tick, jobs.map(j => j.id + ':' + j.status + ':' + String(j.result || '').length).join(',')].join('|');
+    const asks = notionAsks();
+    const sig = [v.thread, v.sel, v.err, v.sending, tick, jobs.map(j => j.id + ':' + j.status + ':' + String(j.result || '').length).join(','),
+      asks.map(r => r.id).join(',')].join('|');
     if (!force && sig === v.logSig) return;
     const fresh = v.logSig.split('|')[0] !== String(v.thread);
     v.logSig = sig;
@@ -5634,13 +5695,16 @@ const AgentsView = {
           h('div', { class: 'atl-ag-top' },
             h('span', { class: 'ag-name' }, String(who.name || '?')),
             a && a.web ? h('span', { class: 'atl-web' }, 'Web') : null,
+            a && a.notion ? h('span', { class: 'atl-web' }, 'Notion') : null,
             h('span', { class: 'status ' + JOB_CLASS[st] }, JOB_STATUS[st]),
             h('span', { class: 'job-meta' }, fmtStamp(j.started) + (j.duration_s != null ? ' · ' + fmtDur(j.duration_s) : ''))),
           j.routed ? h('p', { class: 'cap atl-route' }, 'Atlas → ' + (j.agent === 'atlas' ? String(j.routed) + (j.why ? ' · ' + String(j.why) : '') : String(who.name) + ' · ' + String(j.routed))) : null,
           body,
+          live ? null : jobTalks(j),
           !live && st === 'ok' ? h('div', { class: 'chips', style: { marginTop: '8px' } }, jobChips(j)) : null,
           res ? h('div', { class: 'job-actions' }, copyButton(() => res)) : null));
     });
+    if (asks.length) kids.push(notionAsksBox(asks));
     if (v.err) kids.push(h('p', { class: 'atl-err', role: 'alert' }, v.err));
     el.replaceChildren(...kids);
     if (force || fresh || near) el.scrollTop = el.scrollHeight;
