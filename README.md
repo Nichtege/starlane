@@ -114,15 +114,18 @@ ready prompt for Claude Code for each step. The full guide: [docs/getting-starte
   [docs/languages.md](docs/languages.md).
 - **Your vault's structure**: if your notes use other frontmatter keys, folders or headings (or another language), set
   `[conventions]` once instead of renaming notes. See [docs/vault-conventions.md](docs/vault-conventions.md).
-- **Your agents**: [docs/agents.md](docs/agents.md). The shipped catalog (`agents.toml`) has eight; yours go to
+- **Your agents**: [docs/agents.md](docs/agents.md). The shipped catalog (`agents.toml`) has nine; yours go to
   `agents.local.toml` and `agents/local/`, which are git-ignored.
 - **Your skills**: [docs/skills.md](docs/skills.md).
+- **Your Notion**: one agent saves results to Notion and changes the pages you share with it; deleting needs your
+  yes. Set it up with `aos notion-connect`, see [docs/notion.md](docs/notion.md).
 
 ## Safety model
 
 - **Read-only agents.** Tools come from a fixed whitelist: vault (`Read`, `Grep`, `Glob`) and web (`WebSearch`,
   `WebFetch`). Every agent reads your notes for context; one that also searches the web must say `mixed = true` and is
-  told never to put note text into a search or URL. Anything else is rejected when the file loads.
+  told never to put note text into a search or URL. Anything else is rejected when the file loads. The one exception,
+  opt-in: the Notion agent changes the Notion pages you share with it, and deletes nothing without your yes.
 - **Never writes into your notes.** The only place the system writes inside the vault is the digest folder (the opt-in
   `git-pull` routine is the exception: it runs `git pull --rebase` there, which updates files to match your remote).
 - **Whitelisted routines.** `routines.toml` names commands from a fixed list; they run without a shell, with a time
@@ -147,7 +150,7 @@ examples/       the demo vault, a custom agent   tests/  unittest suite
 `aos setup` makes the same layout (minus the code) in your folder. Run the tests from a clone:
 `python -m unittest discover -s tests -t .`.
 
-More: [getting started](docs/getting-started.md) · [architecture](docs/architecture.md) · [design](docs/design.md) · [agents](docs/agents.md) · [skills](docs/skills.md) ·
+More: [getting started](docs/getting-started.md) · [architecture](docs/architecture.md) · [design](docs/design.md) · [agents](docs/agents.md) · [skills](docs/skills.md) · [Notion](docs/notion.md) ·
 [vault conventions](docs/vault-conventions.md) · [languages](docs/languages.md) · [running on a server](docs/vps-setup.md) ·
 [contributing](CONTRIBUTING.md) · [auf Deutsch](docs/de/README.md)
 

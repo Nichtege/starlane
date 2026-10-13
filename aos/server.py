@@ -30,6 +30,7 @@ from urllib.parse import parse_qs, urlsplit
 from . import agentdefs as AD
 from . import agents as A
 from . import artifacts as AR
+from . import notion as N
 from .config import Config
 from .dashboard import build_data, render_html
 from .i18n import tr
@@ -76,7 +77,8 @@ class State:
     @property
     def api(self) -> dict:
         return {"token": self.token, "run": "/api/run/", "data": "/api/data", "agents": "/api/agents/", "jobs": "/api/jobs", "atlas": "/api/atlas",
-                "skills": "/api/skills/", "artifact": "/api/artifact/", "agent_defs": "/api/agent-defs"}
+                "skills": "/api/skills/", "artifact": "/api/artifact/", "agent_defs": "/api/agent-defs",
+                "notion": "/api/notion/requests/"}
 
     def data(self, fresh: bool = False) -> dict:
         with self._lock:
@@ -272,6 +274,27 @@ def make_handler(state: State):
             state.invalidate()
             self._json(202, {"ok": True, "job": job})
 
+        def _post_notion(self, rid: str) -> None:
+            """Your decision on a deletion request of the Notion agent: {"decision": "approve" | "deny"}."""
+            body = self._read_json()
+            if body is None:
+                return
+            decision = body.get("decision")
+            if decision not in ("approve", "deny"):
+                self._json(400, {"ok": False, "error": tr('decision must be "approve" or "deny"')})
+                return
+            try:
+                rec = N.decide(state.cfg, rid, decision == "approve")
+            except KeyError:
+                self._json(404, {"ok": False, "error": tr("no such waiting request")})
+                return
+            except Exception as exc:  # noqa: BLE001
+                self._fail(exc)
+                return
+            state.invalidate()
+            self._json(200 if rec["status"] != "failed" else 502, {"ok": rec["status"] != "failed", "request": rec,
+                                                                     **({"error": rec["note"]} if rec["status"] == "failed" else {})})
+
         def _post_agent(self, aid: str | None) -> None:
             """aid None = Atlas picks the agent."""
             body = self._read_json()
@@ -344,6 +367,11 @@ def make_handler(state: State):
             if m and ID_RE.match(m.group(1)):
                 if self._guard(True):
                     self._post_agent(m.group(1))
+                return
+            m = re.fullmatch(r"/api/notion/requests/([a-f0-9]{12})", path)
+            if m:
+                if self._guard(True):
+                    self._post_notion(m.group(1))
                 return
             m = re.fullmatch(r"/api/run/([a-z0-9\-]+)", path)
             if not m:

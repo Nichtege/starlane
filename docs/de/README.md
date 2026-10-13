@@ -123,16 +123,19 @@ mit einem fertigen Prompt für Claude Code für jeden Schritt. Die ganze Anleitu
 - **Die Struktur deines Vaults**: Nutzen deine Notizen andere Frontmatter-Schlüssel, Ordner oder Überschriften (oder
   eine andere Sprache), setz einmal `[conventions]`, statt Notizen umzubenennen. Ein fertiger Block für einen deutschen
   Vault steht in [vault-conventions.md](vault-conventions.md#beispiel-ein-deutscher-vault).
-- **Deine Agenten**: [agents.md](agents.md). Der mitgelieferte Katalog (`agents.toml`) hat acht; deine kommen nach
+- **Deine Agenten**: [agents.md](agents.md). Der mitgelieferte Katalog (`agents.toml`) hat neun; deine kommen nach
   `agents.local.toml` und `agents/local/`, die Git ignoriert.
 - **Deine Skills**: [skills.md](skills.md).
+- **Dein Notion**: Ein Agent speichert Ergebnisse in Notion und ändert die Seiten, die du mit ihm teilst; Löschen braucht
+  dein Ja. Einrichten mit `aos notion-connect`, siehe [notion.md](notion.md).
 
 ## Sicherheitsmodell
 
 - **Nur lesende Agenten.** Werkzeuge kommen aus einer festen Positivliste: Vault (`Read`, `Grep`, `Glob`) und Web
   (`WebSearch`, `WebFetch`). Jeder Agent liest deine Notizen als Kontext; einer, der außerdem im Web sucht, braucht
   `mixed = true` und hat die feste Regel, nie Notiztext in eine Suche oder URL zu schreiben. Alles andere wird beim
-  Laden der Datei abgelehnt.
+  Laden der Datei abgelehnt. Die eine Ausnahme, nur wenn du sie einrichtest: Der Notion-Agent ändert die Notion-Seiten,
+  die du mit ihm teilst, und löscht nichts ohne dein Ja.
 - **Schreibt nie in deine Notizen.** Die einzige Stelle im Vault, an die das System schreibt, ist der Digest-Ordner
   (die Ausnahme ist die Routine `git-pull`, die du einschalten musst: Sie führt dort `git pull --rebase` aus, was
   Dateien an deinen Remote anpasst).
@@ -158,7 +161,7 @@ examples/       der Demo-Vault, ein eigener Agent   tests/  unittest-Suite
 `aos setup` legt denselben Aufbau (ohne den Code) in deinem Ordner an. Die Tests startest du aus einem Klon:
 `python -m unittest discover -s tests -t .`.
 
-Mehr: [Erste Schritte](getting-started.md) · [Agenten](agents.md) · [Skills](skills.md) ·
+Mehr: [Erste Schritte](getting-started.md) · [Agenten](agents.md) · [Skills](skills.md) · [Notion](notion.md) ·
 [Vault-Konventionen](vault-conventions.md) · [Sprachen](languages.md) · [Sicherheit](security.md) ·
 [Auf einem Server](vps-setup.md) · auf Englisch: [Architektur](../architecture.md) · [Design](../design.md) ·
 [Mitmachen](../../CONTRIBUTING.md)

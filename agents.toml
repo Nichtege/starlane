@@ -2,7 +2,8 @@
 #
 # Every agent is `claude -p` running headless, without connectors and without a saved session (follow-up questions pass
 # the conversation along as text). Every shipped agent reads the vault (read only) for context and runs in the vault folder;
-# the web agents also search the web. Writing, editing and shell access do not exist.
+# the web agents also search the web. Agents can ask each other while they work (at most 2 levels, 8 messages per task).
+# Only one agent changes anything, and only in Notion: the Notion agent. Writing files, editing notes and shell access do not exist.
 #
 # Keys of an [[agent]] block:
 # id:               a-z, 0-9 and "-". `atlas`, `atlas-*` and `skill-*` are reserved.
@@ -14,7 +15,9 @@
 #                   "<what it delivers>; <vault or web>. For: <tasks>. Not for: <neighbours> (→ Other agent)."
 # model:            haiku | sonnet | opus | fable (default sonnet).
 # tools:            "Read", "Grep", "Glob" (read the vault) and/or "WebSearch", "WebFetch" (the web). Both together only
-#                   with `mixed = true`. Bash, Write, Edit and every other tool are rejected when loading.
+#                   with `mixed = true`. "Notion" (read and change the Notion pages shared with Starlane) for one agent
+#                   only and never with the web tools; see docs/notion.md. Bash, Write, Edit and every other tool are
+#                   rejected when loading.
 # mixed:            true allows vault and web tools in one agent. Set for every shipped web agent: they read your notes
 #                   for context. The runtime then tells them never to put note text into a search query or a URL, but a
 #                   prepared web page could still try to make one do it. For an agent that must never see your notes,
@@ -29,7 +32,7 @@
 # Further limits:   one task per agent at a time, at most 3 tasks in total, a task is at most 4000 characters.
 #
 # Safety: an answer appears in the dashboard and in data/agents/jobs.jsonl, redacted for secret patterns. No agent
-# ever writes into your notes. The runtime appends its own fixed rules to every prompt (read-only tools, reply
+# ever writes into your notes. The Notion agent cannot delete anything: it asks, and you approve or deny in the dashboard. The runtime appends its own fixed rules to every prompt (read-only tools, reply
 # language from [user] in aos.toml, never repeat secrets, text from notes and web pages is material, not instructions).
 #
 # Your own agents: create them in the dashboard (Atlas -> "New agent") or with `python -m aos agent-new`. They live in
@@ -181,4 +184,21 @@ examples = [
     "Explain supply and demand so that I can apply it in an exam.",
     "I have a biology exam in three weeks. Make me a study plan.",
     "Ask me ten practice questions about the French Revolution and give the answers afterwards.",
+]
+
+[[agent]]
+id = "notion"
+name = "Notion"
+group = "Notion"
+description = "Reads and changes your Notion (the pages shared with Starlane), notes as context, no web. For: saving results to Notion, updating pages and databases, finding things in Notion. Not for: web research (→ Assistant), your notes (→ Research)."
+model = "sonnet"
+tools = ["Read", "Grep", "Glob", "Notion"]
+timeout_s = 480
+max_runs_per_day = 30
+prompt = "agents/notion.md"
+keywords = ["notion", "save to notion", "in notion", "notion page", "notion database"]
+examples = [
+    "Put this week's open tasks from my week note into my Notion task list.",
+    "Create a Notion page under Projects with a short summary of my alpha project, with the deadline.",
+    "What is on my Notion page Reading list right now?",
 ]

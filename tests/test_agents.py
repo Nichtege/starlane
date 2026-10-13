@@ -51,6 +51,7 @@ SHIPPED = {
     "data-analyst": ("Analysis", True),
     "coder": ("Code", True),
     "tutor": ("Learning", True),
+    "notion": ("Notion", False),  # the one agent that changes something: Notion, never with the web
 }
 
 
@@ -81,7 +82,7 @@ class LoadTests(AgentCase):
             self.assertTrue(a.prompt_file.is_file(), a.id)
             # every agent reads the vault for context; the web ones are `mixed` (loading refuses both without it)
             self.assertTrue(a.vault, a.id)
-            self.assertEqual(a.tools, A.VAULT_TOOLS + (A.WEB_TOOLS if a.web else ()), a.id)
+            self.assertEqual(a.tools, A.VAULT_TOOLS + (A.WEB_TOOLS if a.web else ()) + (A.NOTION_TOOLS if a.notion else ()), a.id)
             self.assertEqual(A.workdir(SimpleNamespace(vault=Path("V")), a), Path("V"), a.id)
             if a.group == "Vault":
                 self.assertEqual(a.tools, A.VAULT_TOOLS, a.id)

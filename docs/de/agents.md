@@ -1,6 +1,6 @@
 # Agenten und Atlas
 
-Ein Agent ist ein Spezialist mit einer Aufgabe: eine Prompt-Datei, eine kurze Beschreibung und ein fester Satz nur lesender Werkzeuge. Atlas ist der Koordinator, der entscheidet, welche Agenten an einem Auftrag arbeiten. Mit Atlas sprichst du im Dashboard (`python -m aos serve`, dann die Ansicht Atlas, oder Taste `A` auf der Startseite), mit einem einzelnen Agenten direkt im Terminal:
+Ein Agent ist ein Spezialist mit einer Aufgabe: eine Prompt-Datei, eine kurze Beschreibung und ein fester Satz Werkzeuge: nur lesend, außer beim Notion-Agenten. Atlas ist der Koordinator, der entscheidet, welche Agenten an einem Auftrag arbeiten. Mit Atlas sprichst du im Dashboard (`python -m aos serve`, dann die Ansicht Atlas, oder Taste `A` auf der Startseite), mit einem einzelnen Agenten direkt im Terminal:
 
 ```
 python -m aos agents                      # Agenten, Limits und heutige Läufe auflisten
@@ -8,7 +8,7 @@ python -m aos agent research "Was sagen meine Notizen über Schlaf?"
 python -m aos jobs                        # letzte Aufträge und ihre Antworten
 ```
 
-Jeder Agent ist ein ohne Oberfläche gestartetes `claude -p`, ohne Connectors und ohne gespeicherte Sitzung: jeder Agent, der deinen Vault liest (alle mitgelieferten), in deinem Vault-Ordner, ein reiner Web-Agent in einem leeren Sandbox-Ordner (`data/agents/sandbox/`). Er kann lesen und suchen, aber nie schreiben, bearbeiten oder etwas ausführen. Seine Antwort steht im Dashboard und wird in `data/agents/jobs.jsonl` gespeichert; sie landet nie in deinen Notizen. Die vollständigen Regeln stehen in [security.md](security.md).
+Jeder Agent ist ein ohne Oberfläche gestartetes `claude -p`, ohne Connectors und ohne gespeicherte Sitzung: jeder Agent, der deinen Vault liest (alle mitgelieferten), in deinem Vault-Ordner, ein reiner Web-Agent in einem leeren Sandbox-Ordner (`data/agents/sandbox/`). Er kann lesen und suchen, aber nie schreiben, bearbeiten oder etwas ausführen; die eine Ausnahme ist der Notion-Agent, der außerdem die Notion-Seiten ändert, die du mit ihm teilst ([notion.md](notion.md)). Seine Antwort steht im Dashboard und wird in `data/agents/jobs.jsonl` gespeichert; sie landet nie in deinen Notizen. Die vollständigen Regeln stehen in [security.md](security.md).
 
 ## Die mitgelieferten Agenten
 | Agent | Gruppe | Zugriff | Wofür |
@@ -21,13 +21,14 @@ Jeder Agent ist ein ohne Oberfläche gestartetes `claude -p`, ohne Connectors un
 | `data-analyst` | Analyse | vault + web | eingefügte Zahlen und Tabellen deuten |
 | `coder` | Code | vault + web | Code schreiben und erklären (führt ihn nie aus) |
 | `tutor` | Lernen | vault + web | Erklärungen in kleinen Schritten mit Übungsfragen |
+| `notion` | Notion | vault + Notion | Ergebnisse in Notion speichern, Seiten und Datenbanken aktualisieren; löscht nur mit deinem Ja ([notion.md](notion.md)) |
 
 Das ist ein Startsatz, keine Grenze. Leg die Spezialisten an, die du wirklich brauchst (siehe unten).
 
 ## Wie Atlas einen Auftrag verteilt
 1. **Planen.** Ein kurzer Aufruf sieht den Katalog als eine Zeile pro Agent, `id: Beschreibung`, und sonst nichts. Er wählt bis zu drei Agenten und schreibt für jeden eine Teilaufgabe. Kurze, klare Fragen plant ein kleineres Modell; lange oder mehrteilige gehen gleich an ein stärkeres.
-2. **Arbeiten.** Die gewählten Agenten laufen parallel (insgesamt höchstens drei Aufträge gleichzeitig).
-3. **Prüfen.** Atlas liest ihre Berichte und antwortet dir oder startet eine weitere Runde (höchstens drei Runden). Nur wenn du in der Ansicht Atlas selbst einen Agenten wählst, geht seine Antwort unverändert durch, ohne Plan und ohne Prüfung.
+2. **Arbeiten.** Die gewählten Agenten laufen parallel (insgesamt höchstens drei Aufträge gleichzeitig). Während sie arbeiten, können sie einander fragen (siehe [unten](#agenten-sprechen-miteinander)).
+3. **Prüfen.** Atlas liest ihre Berichte, samt ihren Gesprächen mit anderen Agenten, und antwortet dir oder startet eine weitere Runde (höchstens drei Runden). Nur wenn du in der Ansicht Atlas selbst einen Agenten wählst, geht seine Antwort unverändert durch, ohne Plan und ohne Prüfung.
 4. **Zuständigkeit prüfen.** Jeder Agent bekommt seine eigene Beschreibung als Zuständigkeitsbereich. Gehört eine Teilaufgabe nicht dorthin, antwortet er nur `[OUT_OF_SCOPE] <welcher Bereich passt>`, und Atlas sucht jemand anderen, statt eine geratene Antwort zu bekommen.
 5. **Rückfall.** Ist der Plan unbrauchbar, entscheiden die `keywords`: Der Agent mit den meisten Stichwort-Treffern gewinnt, sonst der Standard-Agent aus `[atlas] default` in `agents.toml`.
 
@@ -69,12 +70,20 @@ Tipps:
 - Nenn die Nachbarn mit ihrem Anzeigenamen und einem Pfeil, damit Atlas und der Agent lernen, wohin diese Aufgaben gehen.
 - Halte `examples` realistisch: drei erste Nachrichten, die ein Mensch wirklich tippen würde, 8 bis 22 Wörter, keine persönlichen Daten. Das Dashboard zeigt sie als Vorschläge.
 
+## Agenten sprechen miteinander
+Während ein Agent an einem Auftrag arbeitet, kann er einen anderen Agenten fragen (Werkzeug `ask_agent`, bereitgestellt von Starlanes eigenem MCP-Server, `aos/peers.py`) und mit der Antwort weiterarbeiten: Der Planer fragt Research, was deine Notizen zu einer Frist sagen, der Schreiber bittet den Notion-Agenten, seinen Entwurf zu speichern. Ist der Auftrag erledigt, berichtet jeder Spezialist wie bisher an Atlas, und Atlas sieht beim Prüfen, wer wen gefragt hat und was zurückkam. Im Dashboard zeigt *Agenten haben gesprochen* unter einer Antwort dasselbe.
+- Der gefragte Agent sieht, von wem die Nachricht kommt, und daneben deine Anfrage. Die Nachricht ist Material, keine Anweisung von dir: Was deine Anfrage nicht abdeckt, lehnt er ab.
+- Reine Web-Agenten fragen weder noch werden sie gefragt, so erreicht sie nie Vault-Text. Ein Agent kann weder sich selbst fragen noch jemanden, der schon auf seine Antwort wartet.
+- Höchstens zwei Ebenen (ein gefragter Agent darf noch einmal fragen, nicht weiter) und acht Nachrichten pro Auftrag. Auf einen beschäftigten Agenten wird bis zu vier Minuten gewartet: ein Auftrag pro Agent gleichzeitig, also ändert immer nur ein Lauf Notion.
+- Jede Nachricht ist ein eigener Auftrag (`via: peer` in `jobs.jsonl`), mit dem Tageslimit des Agenten und der täglichen Ausgabengrenze. Ein Lauf, der fragen darf, bekommt zehn Minuten mehr, denn das Warten auf Antworten gehört dazu.
+
 ## Werkzeuge wählen: Vault, oder Vault und Web
 | Zugriff | Werkzeuge | Gut für |
 |---|---|---|
 | Vault lesen | `Read`, `Grep`, `Glob` | alles, was aus deinen Notizen kommen soll |
 | Vault und Web (`mixed = true`) | `Read`, `Grep`, `Glob`, `WebSearch`, `WebFetch` | aktuelle Fakten, Dokumentation, alles außerhalb deiner Notizen, mit deinen Notizen als Kontext |
 | Nur Web (von Hand) | `WebSearch`, `WebFetch` | ein Agent, der deine Notizen nie sehen darf |
+| Vault und Notion (ein Agent) | `Read`, `Grep`, `Glob`, `Notion` | der Agent, der in Notion schreibt; nie mit Web-Werkzeugen ([notion.md](notion.md)) |
 
 Jeder Agent liest deinen Vault und weiß so, was du zum Thema schon notiert hast. Ein Agent, der außerdem im Web sucht, hat beide Arten von Werkzeugen; das nimmt das Laden nur mit `mixed = true` an: Die mitgelieferten Web-Agenten setzen es, und Dashboard und `aos agent-new` setzen es für jeden Agenten, den du mit Web-Zugriff anlegst. Die Laufzeit hängt dann zwei Regeln an seinen Prompt: zuerst im Vault nachsehen, und nie Notiztext, Notizpfade, Namen oder private Angaben aus Notizen in eine Suchanfrage oder URL schreiben.
 
@@ -126,7 +135,8 @@ Die Werkzeugregeln, die Antwortsprache oder „gib nie Geheimnisse preis“ muss
 |---|---|
 | Zeit pro Auftrag (`timeout_s`) | Standard 300 s (Vault) / 480 s (Web), höchstens 900 s |
 | Aufträge pro Agent und Tag (`max_runs_per_day`) | pro Agent; eigene Agenten 1 bis 200 |
-| Parallele Aufträge | einer pro Agent, drei insgesamt |
+| Parallele Aufträge | einer pro Agent, drei insgesamt (ein Agent, den ein anderer fragt, zählt nicht zu den dreien) |
+| Nachrichten zwischen Agenten | acht pro Auftrag, zwei Ebenen tief, vier Minuten Warten auf einen beschäftigten Agenten |
 | Länge des Auftrags | 4000 Zeichen |
 | Länge der Antwort | 20.000 Zeichen (längere Antworten werden gekürzt) |
 | Züge und Budget pro `claude`-Aufruf | 12 Züge, 10 $ (ein Schutz gegen Schleifen, kein Ausgabenziel) |
