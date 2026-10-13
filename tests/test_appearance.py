@@ -194,6 +194,38 @@ console.log(JSON.stringify({ presets: LOOK_PRESETS.map(p => [p[0], p[1], p[2], p
         self.assertEqual(out["found"], [p[0] for p in ps])  # each is recognised as itself, so its chip shows as chosen
         self.assertEqual(sorted(w for w in out["wells"] if w != "dust"), list(range(8)))   # a well for each colour, and the dust
 
+    # ---- the accent ----------------------------------------------------------------------------------------------------------------
+    def test_an_own_accent_is_a_whole_tint_that_keeps_its_contrast(self):
+        out = self._run("""
+const L = o => Object.assign(lookNorm(null), o);
+const cols = ['#0088ff', '#ffee00', '#fffbe0', '#000000', '#ffffff', '#1a1a6e', '#00ff00', '#ff2d55', '#808080', '#7f7f7f', '#3cd3fe', '#5e2b00'];
+const cr = (a, b) => { const x = lookLum(a), y = lookLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+console.log(JSON.stringify({ std: LOOK_STD.accent, css: lookCss(L({ accent: '#ffee00' })),
+  norm: ['#ABCDEF', 'red', 7, null, '</style>', '#12'].map(a => lookNorm({ accent: a }).accent),
+  part: [lookIsStd(L({ accent: '#ff0000' }), 'accent'), lookIsStd(L({ accent: '#ff0000' }), 'icons'), lookIsStd(L({ accent: '#ff0000' }))],
+  checks: cols.map(c => { const a = lookAccent(c); return { c, a, ink: cr(a.ink, '#f2f2f7'), inkWhite: cr(a.ink, '#ffffff'), inkD: cr(a.inkD, '#2c2c2e'), inkBlack: cr(a.inkD, '#000000'), btn: cr(a.btn, a.on) }; }) }));
+""")
+        self.assertEqual(out["std"], "")                  # the standard: no own colour, the tint (blue unless one is picked)
+        self.assertEqual(out["norm"], ["#abcdef", "", "", "", "", ""])
+        self.assertEqual(out["part"], [False, True, False])
+        # an own colour writes the six tokens of a tint and nothing else; --accent, --focus and the rest follow from them
+        css = out["css"]
+        self.assertTrue(css.startswith(":root, body { --tint-l: #ffee00 !important; --tint-d: #ffee00 !important; --tint-ink: #"), css)
+        for t in ("--tint-ink-d: #", "--tint-btn: #", "--tint-on: #000000"):   # a yellow button carries a black label, as the yellow tint
+            self.assertIn(t, css)
+        self.assertNotIn("--accent", css)
+        for r in out["checks"]:
+            with self.subTest(colour=r["c"]):
+                a = r["a"]
+                self.assertTrue(all(re.fullmatch(r"#[0-9a-f]{6}", a[k]) for k in ("l", "ink", "inkD", "btn", "on")))
+                self.assertEqual(a["l"], r["c"])          # graphics show the very colour picked
+                for k in ("ink", "inkWhite", "inkD", "inkBlack", "btn"):
+                    self.assertGreaterEqual(r[k], 4.5, k)  # text and labelled buttons stay readable in both themes
+                self.assertIn(a["on"], ("#ffffff", "#000000"))
+        byc = {r["c"]: r["a"] for r in out["checks"]}
+        self.assertEqual((byc["#1a1a6e"]["btn"], byc["#1a1a6e"]["on"]), ("#1a1a6e", "#ffffff"))   # a colour that works stays itself
+        self.assertEqual(byc["#0088ff"]["l"], "#0088ff")
+
     # ---- the backdrop -----------------------------------------------------------------------------------------------------------
     def test_the_backdrop_is_a_choice_of_the_look_and_writes_no_css(self):
         out = self._run("""
@@ -319,6 +351,28 @@ class AppearanceWiringTests(unittest.TestCase):
         # the sheet's radio groups step over their headings
         self.assertIn("g.querySelectorAll('[role=\"radio\"]')", JS)
 
+
+    def test_the_accent_is_wired(self):
+        # one colour everywhere: the filled buttons, the hero's words and the focus ring all come from the tint's tokens
+        self.assertIn(".btn.primary { background: var(--accent-btn); color: var(--on-accent);", HTML)
+        self.assertIn(".hero-title .w.grad { color: var(--accent-ink); }", HTML)
+        self.assertIn("--accent: var(--tint-l); --accent-ink: var(--tint-ink); --accent-2: var(--tint-ink); --accent-btn: var(--tint-btn); --on-accent: var(--tint-on);", HTML)
+        # the sheet has the nine tints and an own colour; a swatch ends an own colour, Standard and the whole reset go back to blue
+        self.assertIn("head('Accent colour', 'accent', () => pickTint('blue'))", JS)
+        self.assertIn("tintPicker({ 'aria-label': 'Accent colour' }), accentWells", JS)
+        self.assertIn("well('Own colour', () => LOOK.accent || accentHex(), v => ({ accent: v }))", JS)
+        self.assertIn("if (LOOK.accent) applyLook(Object.assign({}, LOOK, { accent: '' }), true);", JS)
+        self.assertIn("onclick: () => { set(lookNorm(null), true); applyTint('blue'); }", JS)
+        self.assertIn("if (LOOK.accent !== prev.accent) { syncTints(); readPalette(); bus.emit('theme'); }", JS)
+        # the start restores the tint before the look, so a stored own colour is laid over it and never cleared by it
+        self.assertLess(JS.index("applyTint(store.get('tint') || 'blue');"), JS.index("applyLook(lookParse(store.get('look')), false);"))
+        self.assertNotIn("applyLook", JS[JS.index("function applyTint(t)"): JS.index("const tintOn =")])
+
+    def test_the_ring_of_balls_keeps_clear_of_the_bar(self):
+        # the room above the ring is measured from the title and the bar (they wrap, and grow a row while arranging), not guessed
+        self.assertIn("const head = view.barEl && view.barEl.closest('.hs-head'), hr = head ? head.getBoundingClientRect() : null;", JS)
+        self.assertIn("if (hb + 12 + 0.6 * S.D > top) top = fit(hb + 12 + 0.6 * S.D);", JS)
+        self.assertIn("if (v.stage) v.stage.refit();", JS)   # a new bar (arranging on and off) lays the ring out again
 
 if __name__ == "__main__":
     unittest.main()

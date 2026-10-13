@@ -1701,6 +1701,8 @@ input[type="checkbox"][role="switch"]:disabled { opacity: .5; cursor: not-allowe
 .look-well input::-moz-color-swatch { border: 0; border-radius: 50%; }
 .look-well.is-unused { opacity: .4; }
 .look-note { margin: 10px 0 0; font-size: 12px; color: var(--warn-ink); }
+.look-sub { margin: -4px 0 12px; font-size: 12px; color: var(--ink-2); }
+.look .w-tints { padding: 0 0 14px; }
 .look-segs { margin: 0 0 12px; }
 .look-icons { display: flex; justify-content: space-between; gap: 6px; margin: 0 0 14px; padding: 10px 12px; border-radius: 18px; background: var(--fill-4); }
 .look-icons .app-ico { width: 34px; height: 34px; }
@@ -4036,10 +4038,10 @@ function homeBar(view) {
     h('summary', { class: 'os-ibtn', 'data-fk': 'bar:menu', title: 'Customise: appearance, see-through and visible widgets', 'aria-label': 'Customise widgets, ' + (WIDGETS.length - hidden.size) + ' of ' + WIDGETS.length + ' visible' }, strokeIcon(BAR_ICON.widgets, 18)),
     h('div', { class: 'w-pop', role: 'group', 'aria-label': 'Customise widgets' },
       h('button', { type: 'button', class: 'w-opt w-look', 'data-fk': 'menu:look', 'aria-haspopup': 'dialog', onclick: () => { menu.open = false; openLookSheet(menu.querySelector('summary')); } },
-        h('span', { class: 'w-look-t' }, h('b', null, 'Appearance'), h('small', null, 'Galaxy, colours, sky and icons')), strokeIcon(['M6 3.5l4.5 4.5L6 12.5'], 14)),
+        h('span', { class: 'w-look-t' }, h('b', null, 'Appearance'), h('small', null, 'Galaxy, colours, sky, accent and icons')), strokeIcon(['M6 3.5l4.5 4.5L6 12.5'], 14)),
       glassControl(view, false),
       h('div', { class: 'w-pop-h', id: 'w-tint-h' }, 'Accent colour'),
-      tintPicker(),
+      tintPicker({ 'aria-labelledby': 'w-tint-h' }),
       h('div', { class: 'w-pop-h' }, 'Widgets'),
       WIDGETS.map(w => h('label', { class: 'w-opt' },
         h('input', { type: 'checkbox', role: 'switch', checked: !hidden.has(w.id) || null, 'data-fk': 'menu:' + w.id, onchange: e => { if (e.currentTarget.checked) view.show(w.id); else view.hide(w.id, false); } }), w.label)),
@@ -4057,7 +4059,7 @@ function homeBar(view) {
   return h('div', { class: 'os-tools' },
     view.editing ? glassControl(view, true) : null,
     // while arranging, as on iOS: the look of the home screen next to its layout
-    view.editing ? h('button', { type: 'button', class: 'btn small hs-look', 'data-fk': 'bar:look', 'aria-haspopup': 'dialog', title: 'Galaxy, colours, sky and icons', onclick: e => openLookSheet(e.currentTarget) }, 'Appearance') : null,
+    view.editing ? h('button', { type: 'button', class: 'btn small hs-look', 'data-fk': 'bar:look', 'aria-haspopup': 'dialog', title: 'Galaxy, colours, sky, accent and icons', onclick: e => openLookSheet(e.currentTarget) }, 'Appearance') : null,
     view.editing ? h('button', { type: 'button', class: 'btn small hs-reset', 'data-fk': 'bar:reset', onclick: () => view.reset() }, 'Reset layout') : null,
     view.editing ? h('span', { class: 'hs-break', 'aria-hidden': 'true' }) : null,
     edit, search, menu, apps, info,
@@ -9312,15 +9314,17 @@ function createHomeStage(view) {
   function layout() {
     S.w = surf.w; S.h = surf.h;
     if (!S.w) return;
-    // room for title and buttons, and for the second row of the bar while arranging on a narrow screen (Appearance, Reset layout)
-    const row = view.editing && view.barEl ? view.barEl.querySelector('.hs-reset') : null;
-    const top = (S.w < 520 ? 124 : 132) + (row && getComputedStyle(view.barEl).flexWrap === 'wrap' ? row.offsetHeight + 10 : 0);
+    // Room for the title and the bar above the ring, measured: the bar wraps on a narrow screen and has a second row while arranging
+    // (Appearance, Reset layout). The top ball, grown by its hover, keeps 12 px clear of the bar's buttons.
+    const head = view.barEl && view.barEl.closest('.hs-head'), hr = head ? head.getBoundingClientRect() : null;
+    const hb = hr && hr.height ? hr.bottom - root.getBoundingClientRect().top : (S.w < 520 ? 92 : 100);
     // Homescreen: the stage is the whole screen, the galaxy lives between the two zones of widget tiles
     const hm = hsWide(innerWidth, innerHeight) ? hsMetrics(innerWidth, innerHeight) : null;
     const free = hm ? S.w - 2 * (HS_PAD + hm.Z * hm.px) : S.w;
-    S.R = Math.max(110, Math.min(free / 2 - 34, (S.h - top) * 0.64));
+    const fit = t => { S.R = Math.max(110, Math.min(free / 2 - 34, (S.h - t) * 0.64)); S.D = clamp(S.R * 0.125, 34, 54); return t; };
+    let top = fit(hb + 12 + 0.6 * 34);   // the smallest ball first; a larger one moves the ring down by what it needs more
+    if (hb + 12 + 0.6 * S.D > top) top = fit(hb + 12 + 0.6 * S.D);
     S.cx = S.w / 2; S.cy = top + S.R;
-    S.D = clamp(S.R * 0.125, 34, 54);
     root.style.setProperty('--d', S.D + 'px');
     root.style.setProperty('--cx', S.cx + 'px');
     root.style.setProperty('--cy', S.cy + 'px');
@@ -10421,21 +10425,34 @@ function applyTint(t) {
   const root = document.documentElement;
   if (state.tint === 'blue') root.removeAttribute('data-tint'); else root.setAttribute('data-tint', state.tint);
   store.set('tint', state.tint);
-  document.querySelectorAll('.w-tint').forEach(b => { const on = b.dataset.tint === state.tint; b.setAttribute('aria-checked', String(on)); b.tabIndex = on ? 0 : -1; });
+  syncTints();
   readPalette();
   bus.emit('theme');
 }
-// Nine swatches as a radio group: one tab stop, the arrow keys move the choice (as in any radio group)
-function tintPicker() {
-  const group = h('div', { class: 'w-tints', role: 'radiogroup', 'aria-labelledby': 'w-tint-h' }, TINTS.map(([id, label]) =>
+// The swatches show the tint in use, none while an own colour (the look's accent) is in use; every picker on the page at once
+const tintOn = id => !LOOK.accent && id === state.tint;
+function syncTints() {
+  document.querySelectorAll('.w-tints').forEach(g => g.querySelectorAll('.w-tint').forEach((b, i) => {
+    const on = tintOn(b.dataset.tint);
+    b.setAttribute('aria-checked', String(on)); b.tabIndex = on || (LOOK.accent && i === 0) ? 0 : -1;
+  }));
+}
+// A swatch picked: its tint, and an own colour gives way to it
+function pickTint(t) {
+  if (LOOK.accent) applyLook(Object.assign({}, LOOK, { accent: '' }), true);
+  applyTint(t);
+}
+// Nine swatches as a radio group: one tab stop, the arrow keys move the choice (as in any radio group). lab: its label
+function tintPicker(lab) {
+  const group = h('div', Object.assign({ class: 'w-tints', role: 'radiogroup' }, lab), TINTS.map(([id, label], i) =>
     h('button', { type: 'button', class: 'w-tint', role: 'radio', 'data-tint': id, 'data-fk': 'menu:tint-' + id, title: label, 'aria-label': label,
-      'aria-checked': String(id === state.tint), tabindex: id === state.tint ? 0 : -1, onclick: () => applyTint(id) })));
+      'aria-checked': String(tintOn(id)), tabindex: tintOn(id) || (LOOK.accent && i === 0) ? 0 : -1, onclick: () => pickTint(id) })));
   group.addEventListener('keydown', e => {
     const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
     if (!d) return;
     e.preventDefault();
     const i = TINTS.findIndex(x => x[0] === state.tint);
-    applyTint(TINTS[(i + d + TINTS.length) % TINTS.length][0]);
+    pickTint(TINTS[(i + d + TINTS.length) % TINTS.length][0]);
     const b = group.querySelector('.w-tint[aria-checked="true"]');
     if (b) b.focus();
   });
@@ -10449,7 +10466,7 @@ const LOOK_ICONS = ['default', 'dark', 'clear', 'tinted'];
 const LOOK_BACKDROPS = ['quiet', 'stars', 'deep', 'milkyway', 'nebulae', 'constellations', 'meteors'];
 const LOOK_BACKDROP_NAMES = {   // \u00ad: a soft hyphen, the word breaks there in a narrow tile only
   quiet: 'Quiet', stars: 'Starfield', deep: 'Deep field', milkyway: 'Milky Way', nebulae: 'Nebulae', constellations: 'Constel\u00adlations', meteors: 'Shooting stars' };
-const LOOK_STD = Object.freeze({ form: 'spiral', stars: GALAXY_PALETTE_STD, dust: '#0a0618', backdrop: 'quiet', sky: '#000000', glow: Object.freeze(['#5a3fd0', '#2a4fd0', '#ff6fb5']), icons: 'default', iconTint: '', ball: '#a6a4c0' });
+const LOOK_STD = Object.freeze({ form: 'spiral', stars: GALAXY_PALETTE_STD, dust: '#0a0618', backdrop: 'quiet', sky: '#000000', glow: Object.freeze(['#5a3fd0', '#2a4fd0', '#ff6fb5']), icons: 'default', iconTint: '', ball: '#a6a4c0', accent: '' });
 // The colours of the galaxy in the order of the sheet, with their index in GALAXY_PALETTE ('dust': the dark lanes)
 const LOOK_WELLS = [[7, 'Core'], [1, 'Old stars'], [0, 'Warm stars'], [2, 'Pale stars'], [3, 'Young stars'], [5, 'Clusters'], [6, 'Nebulae'], [4, 'Rim'], ['dust', 'Dust']];
 const LOOK_FORM_NAMES = { spiral: 'Spiral', swirl: 'Swirl', whirlpool: 'Whirlpool', ring: 'Ring', cartwheel: 'Cartwheel', elliptical: 'Elliptical', sombrero: 'Sombrero',
@@ -10475,11 +10492,11 @@ function lookNorm(o) {
   o = o && typeof o === 'object' ? o : {};
   return { form: GALAXY_FORMS.includes(o.form) ? o.form : S.form, stars: list(o.stars, S.stars), dust: lookHex(o.dust, S.dust),
     backdrop: LOOK_BACKDROPS.includes(o.backdrop) ? o.backdrop : S.backdrop, sky: lookHex(o.sky, S.sky),
-    glow: list(o.glow, S.glow), icons: LOOK_ICONS.includes(o.icons) ? o.icons : S.icons, iconTint: lookHex(o.iconTint, ''), ball: lookHex(o.ball, S.ball) };
+    glow: list(o.glow, S.glow), icons: LOOK_ICONS.includes(o.icons) ? o.icons : S.icons, iconTint: lookHex(o.iconTint, ''), ball: lookHex(o.ball, S.ball), accent: lookHex(o.accent, '') };
 }
 function lookParse(s) { try { return lookNorm(JSON.parse(s)); } catch (e) { return lookNorm(null); } }
 // The parts of the sheet; each has its own "Standard"
-const LOOK_PARTS = { form: ['form'], galaxy: ['stars', 'dust'], backdrop: ['backdrop'], scenery: ['sky', 'glow'], icons: ['icons', 'iconTint', 'ball'] };
+const LOOK_PARTS = { form: ['form'], galaxy: ['stars', 'dust'], backdrop: ['backdrop'], scenery: ['sky', 'glow'], icons: ['icons', 'iconTint', 'ball'], accent: ['accent'] };
 const lookIsStd = (L, part) => (part ? LOOK_PARTS[part] : Object.keys(LOOK_STD)).every(k => JSON.stringify(L[k]) === JSON.stringify(LOOK_STD[k]));
 const lookPreset = L => (LOOK_PRESETS.find(p => p[3] === L.dust && p[2].every((c, i) => c === L.stars[i])) || [null])[0];
 // --space of the dark themes and the space views (section 1) with other glows: [centre, top right, bottom left] as hex. The same
@@ -10501,6 +10518,7 @@ function lookCss(L) {
   L.glow.forEach((c, i) => { if (c !== S.glow[i]) all.push('--aurora-' + (i + 1) + ': ' + c); });
   if (L.ball !== S.ball) all.push('--ball: ' + L.ball);
   if (L.icons === 'tinted' && L.iconTint) all.push('--icon-tint: ' + L.iconTint);
+  if (L.accent) { const a = lookAccent(L.accent); all.push('--tint-l: ' + a.l, '--tint-d: ' + a.l, '--tint-ink: ' + a.ink, '--tint-ink-d: ' + a.inkD, '--tint-btn: ' + a.btn, '--tint-on: ' + a.on); }
   if (all.length) out.push(rule(':root, body', all));
   if (L.glow.some((c, i) => c !== S.glow[i])) {
     const sp = '--space: ' + lookSpace(L.glow.map((c, i) => (c !== S.glow[i] ? c : LOOK_NEB[i])));
@@ -10516,6 +10534,17 @@ function lookLum(hex) {
   return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 }
 const LOOK_LIGHT = 1.05 / 4.5 - 0.05;
+// An own accent colour as the token set of a tint (section 1): the colour itself for graphics; for text a shade of it that keeps 4.5:1 on
+// the grouped background of the light theme and on the raised surface of the dark one; for a labelled button the colour with a white
+// label, else a black one, else a shade of it with a white label, always at 4.5:1. Every colour works, a pale yellow as well as a navy.
+function lookAccent(c) {
+  const ch = (x, i) => parseInt(x.slice(i, i + 2), 16);
+  const mix = (a, b, t) => '#' + [1, 3, 5].map(i => Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * t).toString(16).padStart(2, '0')).join('');
+  const cr = (a, b) => { const x = lookLum(a), y = lookLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const toward = (bg, to) => { for (let k = 0; k < 20; k++) { const m = mix(c, to, k / 20); if (cr(m, bg) >= 4.5) return m; } return to; };
+  const white = cr(c, '#ffffff') >= 4.5, black = !white && cr(c, '#000000') >= 4.5;
+  return { l: c, ink: toward('#f2f2f7', '#000000'), inkD: toward('#2c2c2e', '#ffffff'), btn: white || black ? c : toward('#ffffff', '#000000'), on: black ? '#000000' : '#ffffff' };
+}
 // ---- end of the look model
 
 let LOOK = lookNorm(null), lookStyle = null;
@@ -10551,6 +10580,7 @@ function applyLook(next, save) {
   // ponytail: the sky and the glows are custom properties at the root, so a change restyles the whole page (about 19 ms here, once per
   // frame while one is dragged); set them on their few consumers instead if that ever matters
   if (lookStyle && lookStyle.textContent !== css) lookStyle.textContent = css;
+  if (LOOK.accent !== prev.accent) { syncTints(); readPalette(); bus.emit('theme'); }   // the swatches and the canvases follow the accent
   if (LOOK.icons !== prev.icons) { if (LOOK.icons === 'default') document.documentElement.removeAttribute('data-icons'); else document.documentElement.setAttribute('data-icons', LOOK.icons); }
   if (save) store.set('look', lookIsStd(LOOK) ? '' : JSON.stringify(LOOK));
   bus.emit('look', prev);
@@ -10752,10 +10782,11 @@ let lookSheet = null;
 function openLookSheet(opener) {
   if (lookSheet) { lookSheet.focus(); return; }
   const wells = [];
-  let raf = 0, liveRaf = 0, livePatch = null, usedShape = -1, thumbKey = '', thumbAt = 0, thumbT = 0, thumbQ = [];
+  let raf = 0, liveRaf = 0, livePatch = null, usedShape = -1, thumbKey = '', thumbAt = 0, thumbT = 0, thumbQ = [], setting = false;
   const set = (patch, save, live) => {
     if (!live) { cancelAnimationFrame(liveRaf); liveRaf = 0; livePatch = null; }   // a click wins over a colour still waiting for its frame
-    applyLook(Object.assign({}, LOOK, patch), save); sync(live);
+    setting = true; applyLook(Object.assign({}, LOOK, patch), save); setting = false;   // (a new accent says 'theme': sync follows anyway)
+    sync(live);
   };
   // a colour being dragged: the input events of a colour picker come faster than frames, so only the last one of a frame is applied
   const live = patch => {
@@ -10763,8 +10794,8 @@ function openLookSheet(opener) {
     if (!liveRaf) liveRaf = requestAnimationFrame(() => { liveRaf = 0; const p = livePatch; livePatch = null; set(p, false, true); });
   };
   const std = part => { const p = {}; LOOK_PARTS[part].forEach(k => { p[k] = LOOK_STD[k]; }); return p; };
-  const head = (title, part) => h('h3', { class: 'look-sh' }, h('span', null, title),
-    h('button', { type: 'button', class: 'look-std', 'data-part': part, title: 'Back to the standard ' + title.toLowerCase(), onclick: () => set(std(part), true) }, 'Standard'));
+  const head = (title, part, reset) => h('h3', { class: 'look-sh' }, h('span', null, title),
+    h('button', { type: 'button', class: 'look-std', 'data-part': part, title: 'Back to the standard ' + title.toLowerCase(), onclick: reset || (() => set(std(part), true)) }, 'Standard'));
   // a colour: shown while it is dragged, stored when it is let go
   const well = (label, get, patch, attrs) => {
     const inp = h('input', { type: 'color', value: get(), 'aria-label': label });
@@ -10809,8 +10840,11 @@ function openLookSheet(opener) {
   const iconSegs = h('div', { class: 'os-segs look-segs', role: 'group', 'aria-label': 'Style of the app icons' },
     LOOK_ICONS.map(id => h('button', { type: 'button', class: 'os-seg', 'data-id': id, onclick: () => set({ icons: id }, true) }, LOOK_ICON_NAMES[id])));
   const tintWell = well('Icon colour', () => LOOK.iconTint || accentHex(), v => ({ iconTint: v }));
+  // the accent: one of the nine tints or an own colour, for every button, link, highlight and focus ring at once
+  const accentWells = h('div', { class: 'look-wells' }, well('Own colour', () => LOOK.accent || accentHex(), v => ({ accent: v })));
+  const tintStd = () => !LOOK.accent && state.tint === 'blue';
   const preview = h('div', { class: 'look-icons', 'aria-hidden': 'true' }, ['today', 'os', 'agents', 'skills', 'artifacts', 'rings', 'links'].map(id => h('span', { class: 'app-ico', 'data-app': id }, tabIcon(id))));
-  const all = h('button', { type: 'button', class: 'btn', onclick: () => set(lookNorm(null), true) }, 'Back to the standard look');
+  const all = h('button', { type: 'button', class: 'btn', onclick: () => { set(lookNorm(null), true); applyTint('blue'); } }, 'Back to the standard look');
   const close = () => {
     cancelAnimationFrame(raf); cancelAnimationFrame(liveRaf); clearTimeout(thumbT); offTheme(); root.remove(); lookSheet = null;
     const back = opener && opener.isConnected ? opener : document.querySelector('.w-menu > summary');
@@ -10824,6 +10858,8 @@ function openLookSheet(opener) {
       h('section', { class: 'look-sec', 'aria-label': 'Colours of the galaxy' }, head('Colours', 'galaxy'), presets, galaxyWells),
       h('section', { class: 'look-sec', 'aria-label': 'Backdrop' }, head('Backdrop', 'backdrop'), backs),
       h('section', { class: 'look-sec', 'aria-label': 'Sky and scenery' }, head('Sky and scenery', 'scenery'), sceneryWells, skyNote),
+      h('section', { class: 'look-sec', 'aria-label': 'Accent colour' }, head('Accent colour', 'accent', () => pickTint('blue')),
+        h('p', { class: 'look-sub' }, 'Buttons, links, highlights and focus rings: one colour everywhere.'), tintPicker({ 'aria-label': 'Accent colour' }), accentWells),
       h('section', { class: 'look-sec', 'aria-label': 'Icons' }, head('Icons', 'icons'), iconSegs, preview, h('div', { class: 'look-wells' }, tintWell, well('Balls', () => LOOK.ball, v => ({ ball: v }))))),
     h('div', { class: 'look-f' }, all));
   // everything that shows the look follows it. live: a colour is being dragged, so no other well can have changed (and a hidden well
@@ -10842,8 +10878,8 @@ function openLookSheet(opener) {
     check(forms, LOOK.form); check(backs, LOOK.backdrop); check(presets, lookPreset(LOOK));
     tintWell.hidden = LOOK.icons !== 'tinted';
     if (!live) wells.forEach(([inp, get, el]) => { if (!el.hidden && document.activeElement !== inp) inp.value = get(); });
-    root.querySelectorAll('.look-std').forEach(b => { b.disabled = lookIsStd(LOOK, b.dataset.part); });
-    all.disabled = lookIsStd(LOOK);
+    root.querySelectorAll('.look-std').forEach(b => { b.disabled = b.dataset.part === 'accent' ? tintStd() : lookIsStd(LOOK, b.dataset.part); });
+    all.disabled = lookIsStd(LOOK) && tintStd();
     iconSegs.querySelectorAll('.os-seg').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === LOOK.icons)));
     skyNote.hidden = !(lookLum(LOOK.sky) > LOOK_LIGHT);
     if (usedShape !== GALAXY_LOOK.shape) {
@@ -10861,7 +10897,7 @@ function openLookSheet(opener) {
       if (wait > 0) thumbT = setTimeout(() => { thumbT = 0; start(); }, wait); else start();
     }
   };
-  const offTheme = bus.on('theme', sync);
+  const offTheme = bus.on('theme', () => { if (!setting) sync(); });
   root.addEventListener('keydown', e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } });
   document.body.append(root);
   lookSheet = root;

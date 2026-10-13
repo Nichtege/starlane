@@ -97,15 +97,16 @@ class TintTests(unittest.TestCase):
             self.assertEqual(swatches[name], k["tint-l"], name)           # the swatch shows the tint itself
 
     def test_the_tint_is_a_radio_group_stored_in_this_browser_and_applied_first(self):
-        picker = JS[JS.index("function tintPicker() {"): JS.index("function applyTheme(mode) {")]
-        for needle in ("role: 'radiogroup'", "role: 'radio'", "'aria-checked': String(id === state.tint)", "ArrowRight: 1", "ArrowLeft: -1"):
+        picker = JS[JS.index("function tintPicker(lab) {"): JS.index("function applyTheme(mode) {")]
+        for needle in ("role: 'radiogroup'", "role: 'radio'", "'aria-checked': String(tintOn(id))", "ArrowRight: 1", "ArrowLeft: -1"):
             self.assertIn(needle, picker, needle)
         self.assertIn("store.set('tint', state.tint);", JS)
+        self.assertIn("const tintOn = id => !LOOK.accent && id === state.tint;", JS)   # no swatch is chosen while an own colour is
         self.assertIn("readPalette();\n  bus.emit('theme');\n}", JS[JS.index("function applyTint(t) {"):])   # canvases follow the tint
         init = JS[JS.index("function init() {"):]
         self.assertLess(init.index("applyTint(store.get('tint') || 'blue');"), init.index("LG.init();"))
         bar = JS[JS.index("function homeBar(view) {"):]
-        self.assertLess(bar.index("tintPicker()"), bar.index("'Widgets'"))   # in the Customise menu, before the widgets
+        self.assertLess(bar.index("tintPicker({ 'aria-labelledby': 'w-tint-h' })"), bar.index("'Widgets'"))   # in the Customise menu, before the widgets
 
 
 class LabelContrastTests(unittest.TestCase):
