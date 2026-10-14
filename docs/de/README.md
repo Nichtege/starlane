@@ -8,6 +8,11 @@ Es bearbeitet deine Notizen nie (die eine Ausnahme ist die Routine `git-pull`, s
 aktualisiert, der ein Git-Checkout ist). Agenten können lesen; sie können nicht schreiben, keine Befehle ausführen und
 nichts pushen.
 
+https://github.com/user-attachments/assets/5fcf147b-3d2e-4691-80c3-6c00accaa781
+
+*▶ Die Tour ([herunterladen](../../media/starlane-tour.mp4)), 82 s mit Ton, auf Englisch: die Galaxie, dein Tag, die Looks,
+Atlas, das Second Brain und die Kommandozeile, gemacht aus dem Code und den Bildschirmen des Dashboards selbst.*
+
 > **Ehrlicher Hinweis.** Das ist ein persönliches Werkzeug, das öffentlich gemacht wurde, kein Framework und keine
 > Produktionssoftware. Es ist Python nur mit der Standardbibliothek, für eine Person auf einem Rechner gebaut, und wird
 > **so, wie es ist**, ohne Gewähr geteilt (siehe [LICENSE](../../LICENSE)). Lies [security.md](security.md), bevor du
