@@ -6,6 +6,8 @@ Security (the dashboard can start routines, so):
 - the page that embeds the token needs the launch key of this server start (`/?k=...`, printed by `aos serve`)
   and must be a top-level browser navigation (Sec-Fetch-* headers, where the browser sends them)
 - Host and Origin headers are checked (protection against DNS rebinding and foreign web pages)
+- phone access (`aos phone`, data/phone.json): the Tailscale name that `tailscale serve` forwards from is accepted as
+  Host too; under that name the page needs the phone key, which survives restarts (the app on the home screen)
 - error messages never contain the vault, project or home path
 - only routines from routines.toml, only via the whitelist; no file or shell access over HTTP
 """
@@ -31,7 +33,8 @@ from . import agentdefs as AD
 from . import agents as A
 from . import artifacts as AR
 from . import notion as N
-from .config import Config
+from . import phone as PH
+from .config import Config, aos_cmd
 from .dashboard import build_data, render_html
 from .routines import RoutineError, load_routines
 from .scheduler import Busy, Refused, run_now
@@ -40,6 +43,10 @@ CACHE_SECONDS = 5
 MAX_BODY = 32 * 1024  # custom agents: up to 6000 characters of instructions (UTF-8) plus fields
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{0,40}$")
 PAGE_PATHS = ("/", "/index.html", "/dashboard.html")
+# Under the phone address the page becomes an app for the home screen (manifest, icon, own window)
+PHONE_HEAD = ('<link rel="manifest" href="/manifest.webmanifest?k={key}"><link rel="apple-touch-icon" href="/icon-180.png">'
+              '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">'
+              '<meta name="apple-mobile-web-app-title" content="Starlane"><meta name="theme-color" content="#000000">')
 FORBIDDEN_PAGE = (b"<!doctype html><meta charset=\"utf-8\"><title>Starlane</title>"
                   b"<p>This address needs the link that <code>aos serve</code> printed in the terminal "
                   b"(<code>http://127.0.0.1:&lt;port&gt;/?k=...</code>). Open that link, or restart <code>aos serve</code>.</p>")
@@ -91,6 +98,11 @@ def make_handler(state: State):
     def allowed_hosts() -> set[str]:
         return {f"127.0.0.1:{state.port}", f"localhost:{state.port}"}
 
+    def phone_for(host: str) -> dict | None:
+        """The pairing when the request came in under the phone address (through `tailscale serve`: https, port 443)."""
+        ph = PH.load(state.cfg)
+        return ph if ph and host.lower() in (ph["host"], ph["host"] + ":443") else None
+
     class Handler(BaseHTTPRequestHandler):
         timeout = 30  # drop hanging connections (slowloris) after 30 s
         server_version = "aos"
@@ -117,12 +129,22 @@ def make_handler(state: State):
         def _json(self, code: int, payload: dict) -> None:
             self._send(code, json.dumps(payload, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
+        def _phone(self) -> dict | None:
+            return phone_for(self.headers.get("Host") or "")
+
         def _host_ok(self) -> bool:
-            return (self.headers.get("Host") or "").lower() in allowed_hosts()
+            return (self.headers.get("Host") or "").lower() in allowed_hosts() or self._phone() is not None
 
         def _origin_ok(self) -> bool:
             origin = self.headers.get("Origin")
-            return origin is None or origin in {f"http://{h}" for h in allowed_hosts()}
+            ph = self._phone()
+            return origin is None or origin in {f"http://{h}" for h in allowed_hosts()} or (ph is not None and origin == f"https://{ph['host']}")
+
+        def _key(self) -> str:
+            return parse_qs(urlsplit(self.path).query).get("k", [""])[0]
+
+        def _phone_key_ok(self, ph: dict | None) -> bool:
+            return ph is not None and hmac.compare_digest(self._key().encode(), ph["key"].encode())
 
         def _fail(self, exc: Exception) -> None:
             # e.g. vault not reachable: a readable message instead of a silently dropped connection
@@ -132,14 +154,14 @@ def make_handler(state: State):
             self._json(500, {"ok": False, "error": state.scrub(f"Internal error: {type(exc).__name__}: {exc}")})
 
         def _page_ok(self) -> bool:
-            """The page embeds the token: only a top-level navigation with the launch key of this server start gets it.
+            """The page embeds the token: only a top-level navigation with the launch key of this server start (or, under the
+            phone address, the phone key) gets it.
             Browsers send Sec-Fetch-*; a missing header (older browser, curl) is fine because the key is still needed."""
             dest = (self.headers.get("Sec-Fetch-Dest") or "document").lower()
             site = (self.headers.get("Sec-Fetch-Site") or "none").lower()
             if dest != "document" or site not in ("none", "same-origin"):
                 return False
-            given = parse_qs(urlsplit(self.path).query).get("k", [""])[0]
-            return hmac.compare_digest(given.encode(), state.launch_key.encode())
+            return hmac.compare_digest(self._key().encode(), state.launch_key.encode()) or self._phone_key_ok(self._phone())
 
         def _token_ok(self) -> bool:
             given = self.headers.get("X-AOS-Token") or ""
@@ -176,9 +198,11 @@ def make_handler(state: State):
                 except Exception as exc:  # noqa: BLE001
                     self._fail(exc)
                     return
+                if self._phone_key_ok(self._phone()):
+                    html = html.replace("</head>", PHONE_HEAD.format(key=self._key()) + "</head>", 1)
                 csp = (
-                    f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; img-src data:; "
-                    "connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+                    f"default-src 'none'; script-src 'nonce-{nonce}'; style-src 'unsafe-inline'; img-src data: 'self'; "
+                    "manifest-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
                 )
                 self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", {"Content-Security-Policy": csp})
             elif path == "/api/data":
@@ -221,6 +245,15 @@ def make_handler(state: State):
                     self._fail(exc)
                     return
                 self._json(200, {"ok": True, "artifact": art}) if art else self._json(404, {"ok": False, "error": "unknown artifact"})
+            elif path == "/manifest.webmanifest":
+                ph = self._phone()
+                if not self._phone_key_ok(ph):
+                    self._json(403, {"ok": False, "error": "Phone key missing or wrong"})
+                    return
+                self._send(200, json.dumps(PH.manifest(ph)).encode("utf-8"), "application/manifest+json")
+            elif re.fullmatch(r"/icon-\d+\.png", path) and int(path[6:-4]) in PH.ICON_SIZES:
+                if self._guard(False):
+                    self._send(200, PH.icon_png(int(path[6:-4])), "image/png")
             elif path == "/healthz":
                 self._json(200, {"ok": True}) if self._host_ok() else self._json(403, {"ok": False})
             else:
@@ -457,6 +490,9 @@ def serve(cfg: Config, port: int, open_browser: bool = True) -> int:
         return 1
     url = state.launch_url
     print(f"Dashboard running at {url} (this machine only; the link is valid until the server stops). Stop with Ctrl+C.", flush=True)
+    ph = PH.load(cfg)
+    if ph:
+        print(aos_cmd(f"Phone: https://{ph['host']}/ through Tailscale (the QR code: python -m aos phone)."), flush=True)
     log = state.cfg.data_dir / "server.log"
 
     def note(msg: str) -> None:

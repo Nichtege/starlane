@@ -897,7 +897,7 @@ body.dragging-w { -webkit-user-select: none; user-select: none; cursor: grabbing
   font: 600 13px var(--font); color: var(--ink); background: var(--glass-2); box-shadow: var(--shadow-lg); transition: opacity .2s, transform .3s var(--ease);
 }
 .hs-core:hover .hs-core-tip, .hs-core:focus-visible .hs-core-tip { opacity: 1; transform: translate(-50%, 0); }
-.hs-empty { position: absolute; left: 0; right: 0; top: 14px; margin: 0; text-align: center; font: 600 13px var(--font); color: var(--ink-2); }
+.hs-empty { position: absolute; left: 0; right: 0; top: calc(var(--head, 92px) + 4px); margin: 0; text-align: center; font: 600 13px var(--font); color: var(--ink-2); }
 .hs-wrap { position: relative; }
 .hs-head { position: absolute; z-index: 6; left: 0; right: 0; top: 12px; display: grid; justify-items: center; gap: 8px; pointer-events: none; }
 .hs-head > * { pointer-events: auto; }
@@ -9339,6 +9339,7 @@ function createHomeStage(view) {
     root.style.setProperty('--d', S.D + 'px');
     root.style.setProperty('--cx', S.cx + 'px');
     root.style.setProperty('--cy', S.cy + 'px');
+    root.style.setProperty('--head', Math.round(hb) + 'px');   // .hs-empty sits under the title and the bar
     root.style.setProperty('--core', Math.round(S.R * 0.84) + 'px');
     // Size/layout change (e.g. sidebars appear while loading): the cloud jumps to the new rest pose instead of flying there
     if (!S.flying && sim.ready && (Math.abs(S.cx - S.lcx) > 2 || Math.abs(S.cy - S.lcy) > 2 || Math.abs(S.R - S.lR) > 2)) sim.ready = false;
@@ -10953,6 +10954,8 @@ async function apiFetch(path, opts) {
     const res = await fetch(path, { method: o.method || 'GET', headers, body: o.body, cache: 'no-store', credentials: 'same-origin', signal: ctrl.signal });
     let data = null;
     try { data = await res.json(); } catch (e) { /* not JSON */ }
+    // The phone app (opened with the phone key, which outlives a restart): a restarted server has a new token, a reload fetches it
+    if (res.status === 401 && document.querySelector('link[rel="manifest"]')) location.reload();
     if (!res.ok) throw new Error(data && data.error ? String(data.error) : 'Server responded with ' + res.status);
     return data;
   } catch (e) {
