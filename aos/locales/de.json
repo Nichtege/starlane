@@ -1506,6 +1506,8 @@
   "Kept: “{title}”.": "Behalten: „{title}“.",
   "Deleted in Notion: “{title}” (in Notion’s trash for 30 days).": "In Notion gelöscht: „{title}“ (30 Tage im Papierkorb von Notion).",
   "Deleted in Notion: “{title}”.": "In Notion gelöscht: „{title}“.",
-  "Not done: {error}": "Nicht erledigt: {error}"
+  "Not done: {error}": "Nicht erledigt: {error}",
+  "‹ Agents": "‹ Agenten",
+  "+ New": "+ Neu"
  }
 }

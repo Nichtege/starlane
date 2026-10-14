@@ -244,11 +244,18 @@ class LayoutRegressionTests(unittest.TestCase):
         self.assertIn("ctx.measureText('CLAUDE.md').width <= room", JS)
         self.assertIn("ctx.fillText('CLAUDE', cx, cy - fs * 0.55); ctx.fillText('.md', cx, cy + fs * 0.6);", JS)
 
-    def test_the_atlas_rail_is_compact_on_a_phone(self):
-        phone = re.search(r"@media \(max-width: 720px\) \{\n  /\* A phone stacks the rail over the chat.*?\n\}", CSS, re.S).group(0)
-        self.assertIn("grid-template-rows: minmax(0, 45%) minmax(0, 1fr);", phone)
+    def test_atlas_shows_one_pane_at_a_time_on_a_phone(self):
+        # Stacked, the list took half the screen and the answers got a sliver: the conversation fills the screen, "Agents" leads to the list
+        phone = re.search(r"@media \(max-width: 720px\) \{\n  /\* A phone shows one pane at a time.*?\n\}", CSS, re.S).group(0)
+        self.assertIn(".atl:not(.atl-list-open) .atl-rail, .atl.atl-list-open .atl-chat { display: none; }", phone)
+        self.assertIn(".atl-ch-main p, .atl-tags, .atl-note { display: none; }", phone)
+        self.assertIn(".atl-ag .job-res { padding: 0; background: none; }", phone)
         self.assertIn(".atl-chips { flex-wrap: nowrap; overflow-x: auto;", phone)
         self.assertIn(".atl-new { grid-row: 1; grid-column: 3;", phone)
+        self.assertIn(".atl-back, .atl-nc-s { display: none; }", CSS)   # wider screens keep both panes and the long label
+        self.assertIn("v.showList(true)", JS)
+        self.assertEqual(JS.count("v.showList(false);"), 2)   # picking an agent and opening a conversation lead back to it
+        self.assertIn("if (!COARSE.matches) v.input.focus();", JS)   # no keyboard over the answers of an opened conversation
 
     def test_menus_are_a_bottom_sheet_on_a_phone(self):
         sheet = re.search(r"@media \(max-width: 720px\) \{\n  html:root body \.w-pop \{([^}]*)\}", CSS).group(1)
