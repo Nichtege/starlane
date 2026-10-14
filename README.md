@@ -7,7 +7,7 @@ routines, and gives you a roster of read-only specialist agents behind a local d
 It never edits your notes (the one exception is the opt-in `git-pull` routine, off by default, which updates a vault that
 is a git checkout). Agents can read; they cannot write, run commands or push anything.
 
-https://github.com/user-attachments/assets/c706d531-6da7-4bd1-8467-0534bbef68fb
+https://github.com/user-attachments/assets/5fcf147b-3d2e-4691-80c3-6c00accaa781
 
 *▶ The tour ([download](media/starlane-tour.mp4)), 82 s with sound: the galaxy, your day, the looks, Atlas, the Second Brain and the command
 line, made from the dashboard's own code and screens.*
