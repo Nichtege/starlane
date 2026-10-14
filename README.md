@@ -119,6 +119,8 @@ ready prompt for Claude Code for each step. The full guide: [docs/getting-starte
 - **Your skills**: [docs/skills.md](docs/skills.md).
 - **Your Notion**: one agent saves results to Notion and changes the pages you share with it; deleting needs your
   yes. Set it up with `aos notion-connect`, see [docs/notion.md](docs/notion.md).
+- **Your phone**: the dashboard as an app on the home screen of your iPhone or Android phone, through Tailscale,
+  without opening anything to the internet. Set it up with `aos phone`, see [docs/phone.md](docs/phone.md).
 
 ## Safety model
 
@@ -131,7 +133,7 @@ ready prompt for Claude Code for each step. The full guide: [docs/getting-starte
 - **Whitelisted routines.** `routines.toml` names commands from a fixed list; they run without a shell, with a time
   limit, a daily cap and a circuit breaker. Risky ones (git pull, Claude, skills) are off by default.
 - **Local only.** The server listens on `127.0.0.1`, requires a per-start token, checks Host and Origin, and sends a
-  Content Security Policy with a script nonce.
+  Content Security Policy with a script nonce. Phone access (opt-in) comes through Tailscale, from your own devices only.
 - **Secrets are redacted** from tasks and answers before anything is stored or shown.
 
 Details, limits and what this does *not* protect against: [docs/security.md](docs/security.md).
@@ -151,7 +153,7 @@ examples/       the demo vault, a custom agent   tests/  unittest suite
 `python -m unittest discover -s tests -t .`.
 
 More: [getting started](docs/getting-started.md) · [architecture](docs/architecture.md) · [design](docs/design.md) · [agents](docs/agents.md) · [skills](docs/skills.md) · [Notion](docs/notion.md) ·
-[vault conventions](docs/vault-conventions.md) · [languages](docs/languages.md) · [running on a server](docs/vps-setup.md) ·
+[phone](docs/phone.md) · [vault conventions](docs/vault-conventions.md) · [languages](docs/languages.md) · [running on a server](docs/vps-setup.md) ·
 [contributing](CONTRIBUTING.md) · [auf Deutsch](docs/de/README.md)
 
 ## License

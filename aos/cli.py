@@ -219,6 +219,12 @@ def cmd_serve(cfg: Config, args) -> int:
     return serve(cfg, port=args.port or cfg.server_port, open_browser=not args.no_browser)
 
 
+def cmd_phone(cfg: Config, args) -> int:
+    from . import phone
+
+    return phone.setup(cfg, host=args.host, new_key=args.new_key, off=args.off)
+
+
 def cmd_install_task(cfg: Config, args) -> int:
     from . import tasksched
 
@@ -795,6 +801,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--port", type=int)
     s.add_argument("--no-browser", action="store_true")
     s.set_defaults(fn=cmd_serve)
+    ph = sub.add_parser("phone", help=tr("the dashboard on your phone through Tailscale: prints the QR code to scan (docs/phone.md)"))
+    ph.add_argument("--host", help=tr("this machine's Tailscale name (default: asked from Tailscale)"))
+    ph.add_argument("--new-key", action="store_true", help=tr("a new phone key: every phone has to scan again (a lost phone)"))
+    ph.add_argument("--off", action="store_true", help=tr("switch phone access off"))
+    ph.set_defaults(fn=cmd_phone)
     i = sub.add_parser("install-task", help=tr("set up the schedule (Windows task, every 5 minutes)"))
     i.add_argument("--minutes", type=int, default=5)
     i.set_defaults(fn=cmd_install_task)

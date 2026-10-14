@@ -347,7 +347,7 @@ class DashboardRuntimeTests(unittest.TestCase):
 
 DOCS = PROJECT_ROOT / "docs"
 GUIDES = ("README.md", "getting-started.md", "vault-conventions.md", "agents.md", "skills.md", "security.md", "vps-setup.md",
-          "languages.md", "notion.md")  # architecture.md and design.md are for developers and stay English
+          "languages.md", "notion.md", "phone.md")  # architecture.md and design.md are for developers and stay English
 _LINK = re.compile(r"\]\(([^)\s]+)\)")
 
 

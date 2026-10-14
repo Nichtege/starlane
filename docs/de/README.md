@@ -128,6 +128,8 @@ mit einem fertigen Prompt für Claude Code für jeden Schritt. Die ganze Anleitu
 - **Deine Skills**: [skills.md](skills.md).
 - **Dein Notion**: Ein Agent speichert Ergebnisse in Notion und ändert die Seiten, die du mit ihm teilst; Löschen braucht
   dein Ja. Einrichten mit `aos notion-connect`, siehe [notion.md](notion.md).
+- **Dein Handy**: das Dashboard als App auf dem Home-Bildschirm deines iPhones oder Android-Handys, über Tailscale,
+  ohne etwas ins Internet zu öffnen. Einrichten mit `aos phone`, siehe [phone.md](phone.md).
 
 ## Sicherheitsmodell
 
@@ -142,7 +144,8 @@ mit einem fertigen Prompt für Claude Code für jeden Schritt. Die ganze Anleitu
 - **Routinen aus einer Positivliste.** `routines.toml` nennt Befehle aus einer festen Liste; sie laufen ohne Shell, mit
   Zeitlimit, Tageslimit und Sicherung. Riskante (git pull, Claude, Skills) sind standardmäßig aus.
 - **Nur lokal.** Der Server lauscht auf `127.0.0.1`, verlangt ein Token pro Start, prüft Host und Origin und schickt
-  eine Content Security Policy mit einer Skript-Nonce.
+  eine Content Security Policy mit einer Skript-Nonce. Handy-Zugang (nur wenn du ihn einrichtest) kommt über Tailscale,
+  nur von deinen eigenen Geräten.
 - **Geheimnisse werden geschwärzt**, aus Aufträgen und Antworten, bevor etwas gespeichert oder gezeigt wird.
 
 Details, Grenzen und wogegen das *nicht* schützt: [security.md](security.md).
@@ -161,7 +164,7 @@ examples/       der Demo-Vault, ein eigener Agent   tests/  unittest-Suite
 `aos setup` legt denselben Aufbau (ohne den Code) in deinem Ordner an. Die Tests startest du aus einem Klon:
 `python -m unittest discover -s tests -t .`.
 
-Mehr: [Erste Schritte](getting-started.md) · [Agenten](agents.md) · [Skills](skills.md) · [Notion](notion.md) ·
+Mehr: [Erste Schritte](getting-started.md) · [Agenten](agents.md) · [Skills](skills.md) · [Notion](notion.md) · [Handy](phone.md) ·
 [Vault-Konventionen](vault-conventions.md) · [Sprachen](languages.md) · [Sicherheit](security.md) ·
 [Auf einem Server](vps-setup.md) · auf Englisch: [Architektur](../architecture.md) · [Design](../design.md) ·
 [Mitmachen](../../CONTRIBUTING.md)
